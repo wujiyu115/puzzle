@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Browse Entries{% endblock %}
+
+{% block head %}
+<style>
+    .answer.hidden {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold">Browse Entries</h1>
+        <div class="flex space-x-2">
+            <a href="/browse" class="btn btn-secondary {% if not category %}opacity-50{% endif %}">All</a>
+            <a href="/browse?category=riddle" class="btn btn-secondary {% if category == 'riddle' %}opacity-50{% endif %}">Riddles</a>
+            <a href="/browse?category=joke" class="btn btn-secondary {% if category == 'joke' %}opacity-50{% endif %}">Jokes</a>
+            <a href="/browse?category=idiom" class="btn btn-secondary {% if category == 'idiom' %}opacity-50{% endif %}">Idioms</a>
+        </div>
+    </div>
+
+    {% if entries %}
+        <div class="space-y-4 mb-8">
+            {% for entry in entries %}
+                <div class="card p-4">
+                    <div class="flex justify-between items-start">
+                        <div class="w-full">
+                            <div class="flex justify-between mb-2">
+                                <h3 class="font-medium">{{ entry.question }}</h3>
+                                <span class="
+                                    inline-block px-2 py-1 text-xs font-semibold rounded
+                                    {% if entry.category == 'riddle' %}
+                                        bg-blue-100 text-blue-800
+                                    {% elif entry.category == 'joke' %}
+                                        bg-green-100 text-green-800
+                                    {% elif entry.category == 'idiom' %}
+                                        bg-purple-100 text-purple-800
+                                    {% else %}
+                                        bg-gray-100 text-gray-800
+                                    {% endif %}
+                                ">
+                                    {{ entry.category }}
+                                </span>
+                            </div>
+
+                            <div class="answer-container mb-2">
+                                <button class="text-sm text-blue-600 hover:text-blue-800 mb-1 toggle-answer"
+                                        onclick="toggleAnswer(this)">
+                                    Show Answer
+                                </button>
+                                <p class="answer hidden bg-gray-50 p-2 rounded">{{ entry.answer }}</p>
+                            </div>
+
+                            <span class="text-sm text-gray-500">{{ entry.created_at.strftime('%Y-%m-%d') }}</span>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex justify-center">
+            <div class="flex space-x-1">
+                {% if pagination.has_prev %}
+                    <a href="{{ url_for('browse', page=pagination.prev_num, category=category) }}" class="btn btn-secondary">&laquo; Previous</a>
+                {% else %}
+                    <span class="btn btn-secondary opacity-50">&laquo; Previous</span>
+                {% endif %}
+
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        {% if page_num == pagination.page %}
+                            <span class="btn btn-primary">{{ page_num }}</span>
+                        {% else %}
+                            <a href="{{ url_for('browse', page=page_num, category=category) }}" class="btn btn-secondary">{{ page_num }}</a>
+                        {% endif %}
+                    {% else %}
+                        <span class="btn btn-secondary opacity-50">...</span>
+                    {% endif %}
+                {% endfor %}
+
+                {% if pagination.has_next %}
+                    <a href="{{ url_for('browse', page=pagination.next_num, category=category) }}" class="btn btn-secondary">Next &raquo;</a>
+                {% else %}
+                    <span class="btn btn-secondary opacity-50">Next &raquo;</span>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        <div class="card p-8 text-center">
+            <p class="text-xl text-gray-600 dark:text-gray-400 mb-4">No entries found</p>
+            <a href="/add" class="btn btn-primary">Add New Entry</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleAnswer(button) {
+        const answerElement = button.nextElementSibling;
+        if (answerElement.classList.contains('hidden')) {
+            // Show answer
+            answerElement.classList.remove('hidden');
+            button.textContent = 'Hide Answer';
+        } else {
+            // Hide answer
+            answerElement.classList.add('hidden');
+            button.textContent = 'Show Answer';
+        }
+    }
+</script>
+{% endblock %}

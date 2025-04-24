@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Add New Entry{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-3xl font-bold mb-8">Add New Entry</h1>
+
+    <div class="card p-6 mb-8">
+        <form method="POST" action="/add">
+            <div class="mb-4">
+                <label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                <select id="category" name="category" class="select" required>
+                    <option value="" disabled selected>Select a category</option>
+                    <option value="riddle">Riddle</option>
+                    <option value="joke">Joke</option>
+                    <option value="idiom">Idiom</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label for="question" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Question</label>
+                <textarea id="question" name="question" rows="3" class="input" required placeholder="Enter the question or first part"></textarea>
+            </div>
+
+            <div class="mb-6">
+                <label for="answer" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Answer</label>
+                <textarea id="answer" name="answer" rows="3" class="input" required placeholder="Enter the answer or second part"></textarea>
+            </div>
+
+            <div class="flex justify-end">
+                <button type="submit" class="btn btn-primary">Add Entry</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card p-6">
+        <h2 class="text-xl font-semibold mb-4">Generate with AI</h2>
+        <p class="text-gray-600 dark:text-gray-400 mb-4">
+            Let AI generate content for you. Select a category and click the button below.
+        </p>
+
+        <div class="mb-4">
+            <label for="ai-category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+            <select id="ai-category" class="select">
+                <option value="riddle">Riddle</option>
+                <option value="joke">Joke</option>
+                <option value="idiom">Idiom</option>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <button id="generate-btn" class="btn btn-secondary">Generate Content</button>
+        </div>
+
+        <div id="ai-result" class="hidden">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Generated Content</label>
+                <div id="generated-content" class="p-3 border rounded-md bg-gray-50 dark:bg-gray-800"></div>
+            </div>
+
+            <div class="flex justify-end">
+                <button id="use-generated" class="btn btn-primary">Use This Content</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('generate-btn').addEventListener('click', function() {
+        const category = document.getElementById('ai-category').value;
+        const resultDiv = document.getElementById('ai-result');
+        const contentDiv = document.getElementById('generated-content');
+
+        // Show loading state
+        resultDiv.classList.remove('hidden');
+        contentDiv.innerHTML = 'Generating...';
+
+        // Simulate AI generation (in a real app, this would call an AI API)
+        setTimeout(() => {
+            let generatedContent = '';
+
+            switch(category) {
+                case 'riddle':
+                    generatedContent = getRandomRiddle();
+                    break;
+                case 'joke':
+                    generatedContent = getRandomJoke();
+                    break;
+                case 'idiom':
+                    generatedContent = getRandomIdiom();
+                    break;
+            }
+
+            contentDiv.textContent = generatedContent;
+        }, 1000);
+    });
+
+    document.getElementById('use-generated').addEventListener('click', function() {
+        const generatedContent = document.getElementById('generated-content').textContent;
+        const category = document.getElementById('ai-category').value;
+
+        // Split the content into question and answer
+        let question = "";
+        let answer = "";
+
+        if (category === 'riddle' || category === 'joke') {
+            // For riddles and jokes, split at the question mark
+            const parts = generatedContent.split('?', 1);
+            if (parts.length > 0) {
+                question = parts[0].trim() + '?';
+                answer = generatedContent.substring(question.length).trim();
+            } else {
+                question = generatedContent;
+            }
+        } else if (category === 'idiom') {
+            // For idioms, split at the dash
+            const parts = generatedContent.split('-', 1);
+            if (parts.length > 0) {
+                question = parts[0].trim();
+                answer = generatedContent.substring(question.length + 1).trim();
+            } else {
+                question = generatedContent;
+            }
+        }
+
+        // Fill the form with generated content
+        document.getElementById('question').value = question;
+        document.getElementById('answer').value = answer;
+        document.getElementById('category').value = category;
+
+        // Scroll to the form
+        document.querySelector('form').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // Sample content generation functions (in a real app, these would call an AI API)
+    function getRandomRiddle() {
+        const riddles = [
+            "I'm tall when I'm young, and I'm short when I'm old. What am I?",
+            "What has keys but no locks, space but no room, and you can enter but not go in?",
+            "What has a head, a tail, is brown, and has no legs?",
+            "What has an eye but cannot see?",
+            "What can travel around the world while staying in a corner?"
+        ];
+        return riddles[Math.floor(Math.random() * riddles.length)];
+    }
+
+    function getRandomJoke() {
+        const jokes = [
+            "Why don't scientists trust atoms? Because they make up everything!",
+            "Did you hear about the mathematician who's afraid of negative numbers? He'll stop at nothing to avoid them!",
+            "Why don't skeletons fight each other? They don't have the guts!",
+            "What do you call a fake noodle? An impasta!",
+            "Why did the scarecrow win an award? Because he was outstanding in his field!"
+        ];
+        return jokes[Math.floor(Math.random() * jokes.length)];
+    }
+
+    function getRandomIdiom() {
+        const idioms = [
+            "A blessing in disguise - Something good that isn't recognized at first",
+            "A dime a dozen - Something common",
+            "Beat around the bush - Avoid saying what you mean",
+            "Bite the bullet - To get something over with",
+            "Break a leg - Good luck"
+        ];
+        return idioms[Math.floor(Math.random() * idioms.length)];
+    }
+</script>
+{% endblock %}

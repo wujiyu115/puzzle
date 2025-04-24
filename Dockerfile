@@ -1,0 +1,28 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application
+COPY . .
+
+# Create a volume for the database
+VOLUME /app/data
+
+# Set environment variables
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=production
+ENV SQLALCHEMY_DATABASE_URI=sqlite:///data/puzzle_data.db
+
+# Initialize the database
+RUN mkdir -p /app/data
+RUN python init_db.py
+
+# Expose the port
+EXPOSE 5000
+
+# Run the application
+CMD ["python", "app.py"]

@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Puzzle Collection - Home{% endblock %}
+
+{% block head %}
+<style>
+    .answer.hidden {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="text-center mb-12">
+        <h1 class="text-4xl font-bold mb-4">Welcome to Puzzle Collection</h1>
+        <p class="text-xl text-gray-600 dark:text-gray-400">
+            A collection of riddles, jokes, and idioms for your entertainment
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div class="card p-6 text-center">
+            <h2 class="text-2xl font-semibold mb-4">Riddles</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">
+                Challenge your mind with our collection of brain teasers and riddles
+            </p>
+            <a href="/browse?category=riddle" class="btn btn-primary">Browse Riddles</a>
+        </div>
+
+        <div class="card p-6 text-center">
+            <h2 class="text-2xl font-semibold mb-4">Jokes</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">
+                Laugh out loud with our collection of funny jokes
+            </p>
+            <a href="/browse?category=joke" class="btn btn-primary">Browse Jokes</a>
+        </div>
+
+        <div class="card p-6 text-center">
+            <h2 class="text-2xl font-semibold mb-4">Idioms</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">
+                Explore our collection of idioms and their meanings
+            </p>
+            <a href="/browse?category=idiom" class="btn btn-primary">Browse Idioms</a>
+        </div>
+    </div>
+
+    <div class="card p-8 mb-12">
+        <h2 class="text-2xl font-semibold mb-4">Random Entries</h2>
+        <div class="flex space-x-4 mb-6">
+            <button class="btn btn-secondary" onclick="loadRandom('all')">All Categories</button>
+            <button class="btn btn-secondary" onclick="loadRandom('riddle')">Riddles</button>
+            <button class="btn btn-secondary" onclick="loadRandom('joke')">Jokes</button>
+            <button class="btn btn-secondary" onclick="loadRandom('idiom')">Idioms</button>
+        </div>
+        <div id="random-entries" class="space-y-4">
+            <p class="text-gray-600 dark:text-gray-400 text-center">
+                Click one of the buttons above to load random entries
+            </p>
+        </div>
+    </div>
+
+    <div class="text-center">
+        <a href="/add" class="btn btn-primary">Add New Entry</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function loadRandom(category) {
+        const url = category === 'all'
+            ? '/api/random/10'
+            : `/api/random/10?category=${category}`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('random-entries');
+
+                if (data.length === 0) {
+                    container.innerHTML = `
+                        <p class="text-gray-600 dark:text-gray-400 text-center">
+                            No entries found for this category
+                        </p>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = '';
+
+                data.forEach(entry => {
+                    const categoryBadge = getCategoryBadge(entry.category);
+
+                    const entryElement = document.createElement('div');
+                    entryElement.className = 'card p-4';
+                    entryElement.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div class="w-full">
+                                <div class="flex justify-between mb-2">
+                                    <h3 class="font-medium">${entry.question}</h3>
+                                    <span class="${categoryBadge}">${entry.category}</span>
+                                </div>
+
+                                <div class="answer-container mb-2">
+                                    <button class="text-sm text-blue-600 hover:text-blue-800 mb-1 toggle-answer"
+                                            onclick="toggleAnswer(this)">
+                                        Show Answer
+                                    </button>
+                                    <p class="answer hidden bg-gray-50 p-2 rounded">${entry.answer}</p>
+                                </div>
+
+                                <span class="text-sm text-gray-500">${new Date(entry.created_at).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                    `;
+
+                    container.appendChild(entryElement);
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching random entries:', error);
+                const container = document.getElementById('random-entries');
+                container.innerHTML = `
+                    <p class="text-red-500 text-center">
+                        Error loading entries. Please try again.
+                    </p>
+                `;
+            });
+    }
+
+    function getCategoryBadge(category) {
+        switch (category) {
+            case 'riddle':
+                return 'inline-block px-2 py-1 text-xs font-semibold rounded bg-blue-100 text-blue-800';
+            case 'joke':
+                return 'inline-block px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-800';
+            case 'idiom':
+                return 'inline-block px-2 py-1 text-xs font-semibold rounded bg-purple-100 text-purple-800';
+            default:
+                return 'inline-block px-2 py-1 text-xs font-semibold rounded bg-gray-100 text-gray-800';
+        }
+    }
+
+    // Function to toggle answer visibility
+    function toggleAnswer(button) {
+        const answerElement = button.nextElementSibling;
+        if (answerElement.classList.contains('hidden')) {
+            // Show answer
+            answerElement.classList.remove('hidden');
+            button.textContent = 'Hide Answer';
+        } else {
+            // Hide answer
+            answerElement.classList.add('hidden');
+            button.textContent = 'Show Answer';
+        }
+    }
+
+    // Load random entries from all categories on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadRandom('all');
+    });
+</script>
+{% endblock %}
