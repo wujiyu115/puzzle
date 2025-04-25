@@ -13,3 +13,28 @@ LOCAL_NETWORK_IPS = [
     # '^172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+$',  # 172.16.0.0 - 172.31.255.255 网段
     # '^192\.168\.\d+\.\d+$',  # 192.168.x.x 网段
 ]
+
+# LLM服务配置
+# 可以在环境变量中设置这些API密钥，或者在这里直接配置
+# 注意：不建议将API密钥直接硬编码在代码中，建议使用环境变量
+LLM_CONFIG = {
+    # 是否启用LLM功能
+    'ENABLED': True,
+
+    # 默认模型
+    'DEFAULT_MODEL': 'deepseek-chat',
+
+    # API密钥（优先使用环境变量）
+    'API_KEYS': {
+        'deepseek': '',     # 也可通过环境变量 DEEPSEEK_API_KEY 设置
+        'openrouter': '',   # 也可通过环境变量 OPENROUTER_API_KEY 设置
+        'qianwen': ''       # 也可通过环境变量 QIANWEN_API_KEY 设置
+    },
+
+    # 默认参数
+    'DEFAULT_PARAMS': {
+        'temperature': 0.7,
+        'max_tokens': 1000,
+        'top_p': 0.9
+    }
+}

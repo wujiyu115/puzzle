@@ -17,6 +17,11 @@ ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
 ENV SQLALCHEMY_DATABASE_URI=sqlite:///data/puzzle_data.db
 
+# LLM API Keys (可以在运行容器时通过环境变量覆盖)
+# ENV DEEPSEEK_API_KEY=your-deepseek-api-key
+# ENV OPENROUTER_API_KEY=your-openrouter-api-key
+# ENV QIANWEN_API_KEY=your-qianwen-api-key
+
 # Initialize the database
 RUN mkdir -p /app/data
 RUN python init_db.py

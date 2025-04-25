@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block title %}LLM管理{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-2xl font-bold mb-6">LLM服务管理</h1>
+
+    <div class="card p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">LLM服务状态</h2>
+        <div class="space-y-4">
+            <div class="flex items-center">
+                <span class="font-medium mr-2">状态:</span>
+                {% if config.ENABLED %}
+                <span class="text-green-600 dark:text-green-400">已启用</span>
+                {% else %}
+                <span class="text-red-600 dark:text-red-400">未启用</span>
+                {% endif %}
+            </div>
+            <div class="flex items-center">
+                <span class="font-medium mr-2">默认模型:</span>
+                <span>{{ default_model }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">可用模型</h2>
+        {% if models %}
+            <div class="space-y-6">
+                {% for service, model_list in models.items() %}
+                    <div>
+                        <h3 class="text-lg font-medium mb-2">{{ service }}</h3>
+                        <ul class="list-disc list-inside space-y-1 ml-4">
+                            {% for model in model_list %}
+                                <li>{{ model }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-gray-600 dark:text-gray-400">没有可用的模型。请检查API密钥配置。</p>
+        {% endif %}
+    </div>
+
+    <div class="card p-6">
+        <h2 class="text-xl font-semibold mb-4">LLM测试</h2>
+        <div class="space-y-4">
+            <div class="mb-4">
+                <label for="test-model" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">模型</label>
+                <select id="test-model" class="select w-full">
+                    {% for service, model_list in models.items() %}
+                        <optgroup label="{{ service }}">
+                            {% for model in model_list %}
+                                <option value="{{ model }}" {% if model == default_model %}selected{% endif %}>{{ model }}</option>
+                            {% endfor %}
+                        </optgroup>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label for="test-prompt" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">提示</label>
+                <textarea id="test-prompt" class="textarea w-full h-32" placeholder="输入测试提示..."></textarea>
+            </div>
+
+            <div class="mb-4">
+                <button id="test-btn" class="btn btn-primary">发送测试</button>
+            </div>
+
+            <div id="test-result" class="hidden">
+                <h3 class="text-lg font-medium mb-2">结果</h3>
+                <div id="result-content" class="bg-gray-100 dark:bg-gray-800 p-4 rounded whitespace-pre-wrap"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-6 mt-6">
+        <h2 class="text-xl font-semibold mb-4">API使用说明</h2>
+        <div class="space-y-4">
+            <p>LLM服务提供以下API接口：</p>
+            <ol class="list-decimal list-inside space-y-2">
+                <li>
+                    <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">GET /api/llm/models</code>
+                    <p class="ml-6 mt-1">获取可用的LLM模型列表</p>
+                </li>
+                <li>
+                    <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">POST /api/llm/chat</code>
+                    <p class="ml-6 mt-1">LLM聊天接口，支持多轮对话</p>
+                    <pre class="bg-gray-100 dark:bg-gray-800 p-2 rounded ml-6 mt-1 text-sm">
+{
+  "model": "deepseek-chat",
+  "messages": [
+    {"role": "user", "content": "你好"},
+    {"role": "assistant", "content": "你好！有什么我可以帮助你的吗？"},
+    {"role": "user", "content": "请介绍一下自己"}
+  ],
+  "temperature": 0.7,
+  "max_tokens": 1000
+}</pre>
+                </li>
+                <li>
+                    <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">POST /api/llm/generate</code>
+                    <p class="ml-6 mt-1">简化的生成接口，只需提供提示文本</p>
+                    <pre class="bg-gray-100 dark:bg-gray-800 p-2 rounded ml-6 mt-1 text-sm">
+{
+  "model": "deepseek-chat",
+  "prompt": "请生成一个谜语",
+  "temperature": 0.7,
+  "max_tokens": 1000
+}</pre>
+                </li>
+            </ol>
+            <div class="bg-gray-100 dark:bg-gray-800 p-4 rounded mt-4">
+                <p class="font-semibold">注意：</p>
+                <p class="mt-2">所有API接口都需要API密钥验证，除非请求来自本地网络。</p>
+                <p class="mt-2">API密钥可以通过以下两种方式之一提供：</p>
+                <ul class="list-disc list-inside space-y-1 ml-4 mt-1">
+                    <li>在HTTP请求头中添加 <code class="bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded">X-API-Key</code> 头</li>
+                    <li>在URL查询参数中添加 <code class="bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded">api_key</code> 参数</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('test-btn').addEventListener('click', function() {
+        const model = document.getElementById('test-model').value;
+        const prompt = document.getElementById('test-prompt').value;
+        const resultDiv = document.getElementById('test-result');
+        const contentDiv = document.getElementById('result-content');
+
+        if (!prompt.trim()) {
+            alert('请输入测试提示');
+            return;
+        }
+
+        // 显示加载状态
+        resultDiv.classList.remove('hidden');
+        contentDiv.textContent = '正在生成...';
+
+        // 发送API请求
+        fetch('/api/llm/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: model,
+                prompt: prompt
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                contentDiv.textContent = `错误: ${data.error}`;
+            } else if (data.text) {
+                contentDiv.textContent = data.text;
+            } else {
+                contentDiv.textContent = JSON.stringify(data, null, 2);
+            }
+        })
+        .catch(error => {
+            contentDiv.textContent = `请求失败: ${error.message}`;
+        });
+    });
+</script>
+{% endblock %}

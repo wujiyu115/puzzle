@@ -35,32 +35,47 @@
     </div>
 
     <div class="card p-6">
-        <h2 class="text-xl font-semibold mb-4">Generate with AI</h2>
+        <h2 class="text-xl font-semibold mb-4">使用AI生成内容</h2>
         <p class="text-gray-600 dark:text-gray-400 mb-4">
-            Let AI generate content for you. Select a category and click the button below.
+            让AI为您生成内容。选择类别、数量和模型，然后点击下方按钮。
         </p>
 
         <div class="mb-4">
-            <label for="ai-category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+            <label for="ai-category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">类别</label>
             <select id="ai-category" class="select">
-                <option value="riddle">Riddle</option>
-                <option value="joke">Joke</option>
-                <option value="idiom">Idiom</option>
+                <option value="riddle">谜语</option>
+                <option value="joke">笑话</option>
+                <option value="idiom">成语</option>
             </select>
         </div>
 
         <div class="mb-4">
-            <button id="generate-btn" class="btn btn-secondary">Generate Content</button>
+            <label for="ai-count" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">生成数量</label>
+            <select id="ai-count" class="select">
+                <option value="1">1条</option>
+                <option value="3" selected>3条</option>
+                <option value="5">5条</option>
+                <option value="10">10条</option>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label for="ai-model" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">AI模型</label>
+            <select id="ai-model" class="select">
+                <option value="deepseek-chat">DeepSeek Chat</option>
+                <option value="qianwen-max">千问Max</option>
+                <option value="openrouter:anthropic/claude-3-haiku">Claude 3 Haiku</option>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <button id="generate-btn" class="btn btn-secondary">生成内容</button>
         </div>
 
         <div id="ai-result" class="hidden">
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Generated Content</label>
-                <div id="generated-content" class="p-3 border rounded-md bg-gray-50 dark:bg-gray-800"></div>
-            </div>
-
-            <div class="flex justify-end">
-                <button id="use-generated" class="btn btn-primary">Use This Content</button>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">生成的内容</label>
+                <div id="generated-items" class="space-y-4"></div>
             </div>
         </div>
     </div>
@@ -71,102 +86,139 @@
 <script>
     document.getElementById('generate-btn').addEventListener('click', function() {
         const category = document.getElementById('ai-category').value;
+        const count = parseInt(document.getElementById('ai-count').value);
+        const model = document.getElementById('ai-model').value;
         const resultDiv = document.getElementById('ai-result');
-        const contentDiv = document.getElementById('generated-content');
+        const itemsContainer = document.getElementById('generated-items');
 
-        // Show loading state
+        // 显示加载状态
         resultDiv.classList.remove('hidden');
-        contentDiv.innerHTML = 'Generating...';
+        itemsContainer.innerHTML = '<div class="p-3 border rounded-md bg-gray-50 dark:bg-gray-800">正在生成内容，请稍候...</div>';
 
-        // Simulate AI generation (in a real app, this would call an AI API)
-        setTimeout(() => {
-            let generatedContent = '';
-
-            switch(category) {
-                case 'riddle':
-                    generatedContent = getRandomRiddle();
-                    break;
-                case 'joke':
-                    generatedContent = getRandomJoke();
-                    break;
-                case 'idiom':
-                    generatedContent = getRandomIdiom();
-                    break;
-            }
-
-            contentDiv.textContent = generatedContent;
-        }, 1000);
-    });
-
-    document.getElementById('use-generated').addEventListener('click', function() {
-        const generatedContent = document.getElementById('generated-content').textContent;
-        const category = document.getElementById('ai-category').value;
-
-        // Split the content into question and answer
-        let question = "";
-        let answer = "";
-
-        if (category === 'riddle' || category === 'joke') {
-            // For riddles and jokes, split at the question mark
-            const parts = generatedContent.split('?', 1);
-            if (parts.length > 0) {
-                question = parts[0].trim() + '?';
-                answer = generatedContent.substring(question.length).trim();
-            } else {
-                question = generatedContent;
-            }
-        } else if (category === 'idiom') {
-            // For idioms, split at the dash
-            const parts = generatedContent.split('-', 1);
-            if (parts.length > 0) {
-                question = parts[0].trim();
-                answer = generatedContent.substring(question.length + 1).trim();
-            } else {
-                question = generatedContent;
-            }
+        // 根据类别构建提示
+        let prompt = '';
+        switch(category) {
+            case 'riddle':
+                prompt = `请生成${count}个有趣的谜语，每个谜语包含问题和答案。格式要求：
+1. 每个谜语必须包含问题和答案
+2. 问题和答案之间用"答案："分隔
+3. 每个谜语之间用"---"分隔
+4. 不要有编号
+5. 直接给出谜语内容，不要有多余的解释`;
+                break;
+            case 'joke':
+                prompt = `请生成${count}个有趣的笑话，每个笑话包含问题和答案。格式要求：
+1. 每个笑话必须包含问题和答案
+2. 问题和答案之间用"答案："分隔
+3. 每个笑话之间用"---"分隔
+4. 不要有编号
+5. 直接给出笑话内容，不要有多余的解释`;
+                break;
+            case 'idiom':
+                prompt = `请生成${count}个成语及其含义。格式要求：
+1. 每个成语必须包含成语本身和其含义
+2. 成语和含义之间用"含义："分隔
+3. 每个成语之间用"---"分隔
+4. 不要有编号
+5. 直接给出成语内容，不要有多余的解释`;
+                break;
         }
 
-        // Fill the form with generated content
-        document.getElementById('question').value = question;
-        document.getElementById('answer').value = answer;
-        document.getElementById('category').value = category;
+        // 调用LLM API
+        fetch('/api/llm/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: model,
+                prompt: prompt,
+                temperature: 0.8,
+                max_tokens: 2000
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                itemsContainer.innerHTML = `<div class="p-3 border rounded-md bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-200">错误: ${data.error}</div>`;
+                return;
+            }
 
-        // Scroll to the form
-        document.querySelector('form').scrollIntoView({ behavior: 'smooth' });
+            // 处理生成的内容
+            let content = data.text || '';
+            if (!content) {
+                itemsContainer.innerHTML = '<div class="p-3 border rounded-md bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-200">生成内容为空</div>';
+                return;
+            }
+
+            // 分割多个条目
+            const items = content.split('---').map(item => item.trim()).filter(item => item);
+
+            // 清空容器
+            itemsContainer.innerHTML = '';
+
+            // 添加每个生成的条目
+            items.forEach((item, index) => {
+                let question = '';
+                let answer = '';
+
+                if (category === 'riddle' || category === 'joke') {
+                    const parts = item.split('答案：');
+                    if (parts.length > 1) {
+                        question = parts[0].trim();
+                        answer = parts[1].trim();
+                    } else {
+                        question = item;
+                        answer = '';
+                    }
+                } else if (category === 'idiom') {
+                    const parts = item.split('含义：');
+                    if (parts.length > 1) {
+                        question = parts[0].trim();
+                        answer = parts[1].trim();
+                    } else {
+                        question = item;
+                        answer = '';
+                    }
+                }
+
+                // 创建条目元素
+                const itemElement = document.createElement('div');
+                itemElement.className = 'p-4 border rounded-md bg-gray-50 dark:bg-gray-800';
+                itemElement.innerHTML = `
+                    <div class="mb-2">
+                        <strong>问题:</strong> ${question}
+                    </div>
+                    <div class="mb-3">
+                        <strong>答案:</strong> ${answer}
+                    </div>
+                    <div class="flex justify-end">
+                        <button class="use-item-btn btn btn-sm btn-primary" data-question="${encodeURIComponent(question)}" data-answer="${encodeURIComponent(answer)}">使用此内容</button>
+                    </div>
+                `;
+
+                itemsContainer.appendChild(itemElement);
+            });
+
+            // 为每个"使用此内容"按钮添加事件监听器
+            document.querySelectorAll('.use-item-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const question = decodeURIComponent(this.getAttribute('data-question'));
+                    const answer = decodeURIComponent(this.getAttribute('data-answer'));
+
+                    // 填充表单
+                    document.getElementById('question').value = question;
+                    document.getElementById('answer').value = answer;
+                    document.getElementById('category').value = category;
+
+                    // 滚动到表单
+                    document.querySelector('form').scrollIntoView({ behavior: 'smooth' });
+                });
+            });
+        })
+        .catch(error => {
+            itemsContainer.innerHTML = `<div class="p-3 border rounded-md bg-red-50 dark:bg-red-900 text-red-600 dark:text-red-200">请求失败: ${error.message}</div>`;
+        });
     });
-
-    // Sample content generation functions (in a real app, these would call an AI API)
-    function getRandomRiddle() {
-        const riddles = [
-            "I'm tall when I'm young, and I'm short when I'm old. What am I?",
-            "What has keys but no locks, space but no room, and you can enter but not go in?",
-            "What has a head, a tail, is brown, and has no legs?",
-            "What has an eye but cannot see?",
-            "What can travel around the world while staying in a corner?"
-        ];
-        return riddles[Math.floor(Math.random() * riddles.length)];
-    }
-
-    function getRandomJoke() {
-        const jokes = [
-            "Why don't scientists trust atoms? Because they make up everything!",
-            "Did you hear about the mathematician who's afraid of negative numbers? He'll stop at nothing to avoid them!",
-            "Why don't skeletons fight each other? They don't have the guts!",
-            "What do you call a fake noodle? An impasta!",
-            "Why did the scarecrow win an award? Because he was outstanding in his field!"
-        ];
-        return jokes[Math.floor(Math.random() * jokes.length)];
-    }
-
-    function getRandomIdiom() {
-        const idioms = [
-            "A blessing in disguise - Something good that isn't recognized at first",
-            "A dime a dozen - Something common",
-            "Beat around the bush - Avoid saying what you mean",
-            "Bite the bullet - To get something over with",
-            "Break a leg - Good luck"
-        ];
-        return idioms[Math.floor(Math.random() * idioms.length)];
-    }
 </script>
 {% endblock %}

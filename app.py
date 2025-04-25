@@ -7,6 +7,8 @@ import hashlib
 import random
 from datetime import datetime
 from functools import wraps
+import json
+from typing import Dict, Any, List
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -30,14 +32,14 @@ class DataEntry(db.Model):
 
 class ApiKey(db.Model):
     __tablename__ = 'api_keys'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     key = db.Column(db.String(64), unique=True, nullable=False)
     description = db.Column(db.String(200))
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_used_at = db.Column(db.DateTime)
-    
+
     @staticmethod
     def generate_key():
         """Generate a random API key"""
@@ -109,15 +111,15 @@ def inject_now():
 # Helper function to check if request is from localhost
 def is_local_request():
     """Check if the request is coming from localhost/local network
-    
+
     根据config.py中的LOCAL_NETWORK_IPS配置检查请求IP是否在允许的本地网络范围内
     支持精确匹配和正则表达式模式匹配
     """
     from config import LOCAL_NETWORK_IPS
     import re
-    
+
     client_ip = request.remote_addr
-    
+
     # 检查IP是否在允许列表中
     for ip_pattern in LOCAL_NETWORK_IPS:
         # 如果是精确匹配
@@ -130,7 +132,7 @@ def is_local_request():
         except re.error:
             # 如果正则表达式无效，则跳过该模式
             continue
-    
+
     return False
 
 # API Key verification decorator for API endpoints
@@ -141,22 +143,22 @@ def require_api_key(f):
         if is_local_request():
             # Skip API key verification for local network requests
             return f(*args, **kwargs)
-            
+
         # For non-local requests, require API key
         api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
-        
+
         if not api_key:
             return jsonify({'error': 'API key is required'}), 401
-            
+
         # Check if API key exists and is active
         key = ApiKey.query.filter_by(key=api_key, is_active=True).first()
         if not key:
             return jsonify({'error': 'Invalid or inactive API key'}), 401
-            
+
         # Update last used timestamp
         key.last_used_at = datetime.utcnow()
         db.session.commit()
-        
+
         return f(*args, **kwargs)
     return decorated_function
 
@@ -322,10 +324,10 @@ def list_api_keys():
 def create_api_key():
     description = request.form.get('description', '')
     new_key = ApiKey(key=ApiKey.generate_key(), description=description)
-    
+
     db.session.add(new_key)
     db.session.commit()
-    
+
     flash('New API key created successfully', 'success')
     return redirect(url_for('list_api_keys'))
 
@@ -334,9 +336,9 @@ def create_api_key():
 def toggle_api_key(key_id):
     key = ApiKey.query.get_or_404(key_id)
     key.is_active = not key.is_active
-    
+
     db.session.commit()
-    
+
     status = 'activated' if key.is_active else 'deactivated'
     flash(f'API key {status} successfully', 'success')
     return redirect(url_for('list_api_keys'))
@@ -390,6 +392,173 @@ def add_form():
             return redirect(url_for('add_form'))
 
     return render_template('add.html')
+
+# LLM服务相关路由
+@app.route('/api/llm/models', methods=['GET'])
+@require_api_key
+def list_llm_models():
+    """获取可用的LLM模型列表"""
+    try:
+        from config import LLM_CONFIG
+
+        # 检查LLM功能是否启用
+        if not LLM_CONFIG.get('ENABLED', False):
+            return jsonify({'error': 'LLM功能未启用'}), 403
+
+        # 导入LLM服务
+        from llm_service import get_available_models
+
+        # 获取可用模型
+        models = get_available_models()
+
+        return jsonify({
+            'models': models,
+            'default_model': LLM_CONFIG.get('DEFAULT_MODEL', 'deepseek-chat')
+        })
+    except ImportError as e:
+        return jsonify({'error': f'LLM服务模块加载失败: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'error': f'获取模型列表失败: {str(e)}'}), 500
+
+@app.route('/api/llm/chat', methods=['POST'])
+@require_api_key
+def llm_chat():
+    """LLM聊天接口"""
+    try:
+        from config import LLM_CONFIG
+
+        # 检查LLM功能是否启用
+        if not LLM_CONFIG.get('ENABLED', False):
+            return jsonify({'error': 'LLM功能未启用'}), 403
+
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '请求数据无效'}), 400
+
+        # 验证必要字段
+        if 'messages' not in data or not isinstance(data['messages'], list) or not data['messages']:
+            return jsonify({'error': '消息列表不能为空'}), 400
+
+        # 导入LLM服务
+        from llm_service import chat_completion
+
+        # 获取参数
+        model = data.get('model', LLM_CONFIG.get('DEFAULT_MODEL', 'deepseek-chat'))
+        temperature = data.get('temperature', LLM_CONFIG.get('DEFAULT_PARAMS', {}).get('temperature', 0.7))
+        max_tokens = data.get('max_tokens', LLM_CONFIG.get('DEFAULT_PARAMS', {}).get('max_tokens', 1000))
+        top_p = data.get('top_p', LLM_CONFIG.get('DEFAULT_PARAMS', {}).get('top_p', 0.9))
+
+        # 调用LLM服务
+        result = chat_completion(
+            messages=data['messages'],
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=top_p
+        )
+
+        return jsonify(result)
+    except ImportError as e:
+        return jsonify({'error': f'LLM服务模块加载失败: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'error': f'LLM聊天请求失败: {str(e)}'}), 500
+
+@app.route('/api/llm/generate', methods=['POST'])
+@require_api_key
+def llm_generate():
+    """LLM内容生成接口 - 简化版，只需要提供提示文本"""
+    try:
+        from config import LLM_CONFIG
+
+        # 检查LLM功能是否启用
+        if not LLM_CONFIG.get('ENABLED', False):
+            return jsonify({'error': 'LLM功能未启用'}), 403
+
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '请求数据无效'}), 400
+
+        # 验证必要字段
+        if 'prompt' not in data or not data['prompt']:
+            return jsonify({'error': '提示文本不能为空'}), 400
+
+        # 导入LLM服务
+        from llm_service import chat_completion
+
+        # 获取参数
+        model = data.get('model', LLM_CONFIG.get('DEFAULT_MODEL', 'deepseek-chat'))
+        temperature = data.get('temperature', LLM_CONFIG.get('DEFAULT_PARAMS', {}).get('temperature', 0.7))
+        # 增加默认的max_tokens，以支持生成更多内容
+        max_tokens = data.get('max_tokens', LLM_CONFIG.get('DEFAULT_PARAMS', {}).get('max_tokens', 2000))
+        top_p = data.get('top_p', LLM_CONFIG.get('DEFAULT_PARAMS', {}).get('top_p', 0.9))
+
+        # 构建系统提示，指导模型生成结构化内容
+        system_message = {
+            "role": "system",
+            "content": "你是一个内容生成助手，擅长生成结构化的内容。请严格按照用户指定的格式生成内容，不要添加额外的解释或说明。"
+        }
+
+        # 构建消息，添加系统提示
+        messages = [
+            system_message,
+            {"role": "user", "content": data['prompt']}
+        ]
+
+        # 调用LLM服务
+        result = chat_completion(
+            messages=messages,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            top_p=top_p
+        )
+
+        # 简化响应
+        if 'choices' in result and len(result['choices']) > 0 and 'message' in result['choices'][0]:
+            return jsonify({
+                'text': result['choices'][0]['message'].get('content', ''),
+                'model': result.get('model', model)
+            })
+
+        return jsonify(result)
+    except ImportError as e:
+        return jsonify({'error': f'LLM服务模块加载失败: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'error': f'LLM生成请求失败: {str(e)}'}), 500
+
+# LLM管理界面
+@app.route('/llm', methods=['GET'])
+@local_access_only
+def llm_dashboard():
+    """LLM管理界面"""
+    try:
+        from config import LLM_CONFIG
+
+        # 检查LLM功能是否启用
+        if not LLM_CONFIG.get('ENABLED', False):
+            flash('LLM功能未启用，请在config.py中启用', 'error')
+            return redirect(url_for('index'))
+
+        # 导入LLM服务
+        from llm_service import get_available_models
+
+        # 获取可用模型
+        models = get_available_models()
+
+        return render_template(
+            'llm.html',
+            models=models,
+            default_model=LLM_CONFIG.get('DEFAULT_MODEL', 'deepseek-chat'),
+            config=LLM_CONFIG
+        )
+    except ImportError as e:
+        flash(f'LLM服务模块加载失败: {str(e)}', 'error')
+        return redirect(url_for('index'))
+    except Exception as e:
+        flash(f'获取LLM信息失败: {str(e)}', 'error')
+        return redirect(url_for('index'))
 
 if __name__ == '__main__':
     # 使用0.0.0.0作为主机以允许外部访问API接口
