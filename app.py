@@ -1,4 +1,5 @@
 import os
+import sqlite3
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash
@@ -56,7 +57,6 @@ if db_uri.startswith('sqlite:///'):
         print(f"Created directory: {db_dir}")
 
     # Remove empty database file if it exists but has zero size
-    # This ensures SQLite can create a proper database file
     if os.path.exists(db_path) and os.path.getsize(db_path) == 0:
         try:
             os.remove(db_path)
@@ -64,15 +64,24 @@ if db_uri.startswith('sqlite:///'):
         except Exception as e:
             print(f"Error removing empty database file: {e}")
 
+    # Create a new database file using direct SQLite connection if it doesn't exist
+    if not os.path.exists(db_path):
+        try:
+            # Create an empty SQLite database file
+            conn = sqlite3.connect(db_path)
+            conn.close()
+            print(f"Created new SQLite database file: {db_path}")
+        except Exception as e:
+            print(f"Error creating SQLite database file: {e}")
+
 # Initialize database within app context
 with app.app_context():
     try:
-        # This will create the database file if it doesn't exist
-        # and create all tables
+        # Create all tables
         db.create_all()
-        print("Database initialized successfully")
+        print("Database tables created successfully")
     except Exception as e:
-        print(f"Error initializing database: {e}")
+        print(f"Error creating database tables: {e}")
 
 # Context processor to make datetime available in all templates
 @app.context_processor
