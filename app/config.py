@@ -1,4 +1,6 @@
-# 配置文件
+"""
+应用配置
+"""
 import os
 import logging
 
@@ -26,17 +28,17 @@ LOCAL_NETWORK_IPS = [
 LLM_CONFIG = {
     # 是否启用LLM功能
     'ENABLED': True,
-
+    
     # 默认模型
     'DEFAULT_MODEL': 'deepseek-chat',
-
+    
     # API密钥（优先使用环境变量）
     'API_KEYS': {
         'deepseek': '',     # 也可通过环境变量 DEEPSEEK_API_KEY 设置
         'openrouter': '',   # 也可通过环境变量 OPENROUTER_API_KEY 设置
         'qianwen': ''       # 也可通过环境变量 QIANWEN_API_KEY 设置
     },
-
+    
     # 默认参数
     'DEFAULT_PARAMS': {
         'temperature': 0.7,

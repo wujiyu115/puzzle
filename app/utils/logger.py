@@ -1,9 +1,12 @@
+"""
+日志工具模块
+"""
 import os
 import logging
 from logging.handlers import RotatingFileHandler
 import sys
 import traceback
-from config import LOG_LEVEL, LOG_DIR
+from app.config import LOG_LEVEL, LOG_DIR
 
 # 确保日志目录存在
 def ensure_log_dir_exists(log_dir=LOG_DIR):

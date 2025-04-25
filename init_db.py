@@ -1,10 +1,14 @@
-from app import app, db, DataEntry
-from logger import get_logger, log_exception
+"""
+数据库初始化脚本
+"""
+from app import create_app, db
+from app.models import DataEntry
+from app.utils.logger import get_logger, log_exception
 
 # 获取当前模块的日志记录器
 logger = get_logger()
 
-# Sample data
+# 示例数据
 sample_data = [
     # Riddles
     {"question": "I'm tall when I'm young, and I'm short when I'm old. What am I?", "answer": "A candle", "category": "riddle"},
@@ -29,24 +33,26 @@ sample_data = [
 ]
 
 def init_db():
+    """初始化数据库"""
     try:
+        app = create_app()
         with app.app_context():
-            # Create tables if they don't exist
+            # 创建表（如果不存在）
             db.create_all()
             logger.info("Database tables created or already exist")
 
-            # Check if database is empty
+            # 检查数据库是否为空
             try:
                 entry_count = DataEntry.query.count()
                 if entry_count == 0:
                     logger.info("Initializing database with sample data...")
 
-                    # Add sample data
+                    # 添加示例数据
                     for item in sample_data:
-                        # Generate hash for question and answer
+                        # 为问题和答案生成哈希
                         content_hash = DataEntry.generate_hash(item["question"], item["answer"])
 
-                        # Check if entry already exists
+                        # 检查条目是否已存在
                         existing = DataEntry.query.filter_by(content_hash=content_hash).first()
                         if not existing:
                             entry = DataEntry(

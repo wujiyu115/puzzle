@@ -13,7 +13,7 @@ COPY . .
 VOLUME /app/data
 
 # Set environment variables
-ENV FLASK_APP=app.py
+ENV FLASK_APP=run.py
 ENV FLASK_ENV=production
 ENV SQLALCHEMY_DATABASE_URI=sqlite:///data/puzzle_data.db
 
@@ -23,11 +23,11 @@ ENV SQLALCHEMY_DATABASE_URI=sqlite:///data/puzzle_data.db
 # ENV QIANWEN_API_KEY=your-qianwen-api-key
 
 # Initialize the database
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data /app/logs
 RUN python init_db.py
 
 # Expose the port
 EXPOSE 5000
 
 # Run the application
-CMD ["python", "app.py"]
+CMD ["python", "run.py"]
