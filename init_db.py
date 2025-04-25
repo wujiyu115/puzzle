@@ -26,34 +26,43 @@ sample_data = [
 ]
 
 def init_db():
-    with app.app_context():
-        # Create tables
-        db.create_all()
+    try:
+        with app.app_context():
+            # Create tables if they don't exist
+            db.create_all()
+            print("Database tables created or already exist")
 
-        # Check if database is empty
-        if DataEntry.query.count() == 0:
-            print("Initializing database with sample data...")
+            # Check if database is empty
+            try:
+                entry_count = DataEntry.query.count()
+                if entry_count == 0:
+                    print("Initializing database with sample data...")
 
-            # Add sample data
-            for item in sample_data:
-                # Generate hash for question and answer
-                content_hash = DataEntry.generate_hash(item["question"], item["answer"])
+                    # Add sample data
+                    for item in sample_data:
+                        # Generate hash for question and answer
+                        content_hash = DataEntry.generate_hash(item["question"], item["answer"])
 
-                # Check if entry already exists
-                existing = DataEntry.query.filter_by(content_hash=content_hash).first()
-                if not existing:
-                    entry = DataEntry(
-                        question=item["question"],
-                        answer=item["answer"],
-                        category=item["category"],
-                        content_hash=content_hash
-                    )
-                    db.session.add(entry)
+                        # Check if entry already exists
+                        existing = DataEntry.query.filter_by(content_hash=content_hash).first()
+                        if not existing:
+                            entry = DataEntry(
+                                question=item["question"],
+                                answer=item["answer"],
+                                category=item["category"],
+                                content_hash=content_hash
+                            )
+                            db.session.add(entry)
 
-            db.session.commit()
-            print(f"Added {len(sample_data)} sample entries")
-        else:
-            print("Database already contains data. Skipping initialization.")
+                    db.session.commit()
+                    print(f"Added {len(sample_data)} sample entries")
+                else:
+                    print(f"Database already contains {entry_count} entries. Skipping initialization.")
+            except Exception as e:
+                print(f"Error checking or adding data: {e}")
+                db.session.rollback()
+    except Exception as e:
+        print(f"Error initializing database: {e}")
 
 if __name__ == "__main__":
     init_db()

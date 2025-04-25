@@ -42,9 +42,37 @@ class DataEntry(db.Model):
         combined = f"{question}|{answer}"
         return hashlib.md5(combined.encode()).hexdigest()
 
-# Create database tables
+# Ensure data directory exists and database file is created
+db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+if db_uri.startswith('sqlite:///'):
+    db_path = db_uri.replace('sqlite:///', '')
+    if not os.path.isabs(db_path):
+        db_path = os.path.join(os.getcwd(), db_path)
+
+    # Create directory if it doesn't exist
+    db_dir = os.path.dirname(db_path)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir)
+        print(f"Created directory: {db_dir}")
+
+    # Remove empty database file if it exists but has zero size
+    # This ensures SQLite can create a proper database file
+    if os.path.exists(db_path) and os.path.getsize(db_path) == 0:
+        try:
+            os.remove(db_path)
+            print(f"Removed empty database file: {db_path}")
+        except Exception as e:
+            print(f"Error removing empty database file: {e}")
+
+# Initialize database within app context
 with app.app_context():
-    db.create_all()
+    try:
+        # This will create the database file if it doesn't exist
+        # and create all tables
+        db.create_all()
+        print("Database initialized successfully")
+    except Exception as e:
+        print(f"Error initializing database: {e}")
 
 # Context processor to make datetime available in all templates
 @app.context_processor
