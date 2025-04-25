@@ -1,11 +1,12 @@
 import os
 import sqlite3
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, abort
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash
 import hashlib
 import random
 from datetime import datetime
+from functools import wraps
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -26,6 +27,21 @@ class DataEntry(db.Model):
     category = db.Column(db.String(10), nullable=False)
     content_hash = db.Column(db.String(32), unique=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class ApiKey(db.Model):
+    __tablename__ = 'api_keys'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(64), unique=True, nullable=False)
+    description = db.Column(db.String(200))
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_used_at = db.Column(db.DateTime)
+    
+    @staticmethod
+    def generate_key():
+        """Generate a random API key"""
+        return hashlib.sha256(os.urandom(32)).hexdigest()
 
     # For backward compatibility
     @property
@@ -93,8 +109,30 @@ def inject_now():
 def index():
     return render_template('index.html')
 
+# API Key verification decorator
+def require_api_key(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+        
+        if not api_key:
+            return jsonify({'error': 'API key is required'}), 401
+            
+        # Check if API key exists and is active
+        key = ApiKey.query.filter_by(key=api_key, is_active=True).first()
+        if not key:
+            return jsonify({'error': 'Invalid or inactive API key'}), 401
+            
+        # Update last used timestamp
+        key.last_used_at = datetime.utcnow()
+        db.session.commit()
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
 # API Routes
 @app.route('/api/random/<int:count>', methods=['GET'])
+@require_api_key
 def get_random_entries(count):
     category = request.args.get('category')
 
@@ -127,6 +165,7 @@ def get_random_entries(count):
         return jsonify([])
 
 @app.route('/api/add', methods=['POST'])
+@require_api_key
 def add_entry():
     data = request.get_json()
 
@@ -223,6 +262,46 @@ def browse():
     entries = pagination.items
 
     return render_template('browse.html', entries=entries, pagination=pagination, category=category)
+
+# API Key management routes
+@app.route('/api/keys', methods=['GET'])
+def list_api_keys():
+    # Simple admin check - in a real app, use proper authentication
+    if request.remote_addr != '127.0.0.1' and request.remote_addr != '::1':
+        abort(403)
+        
+    keys = ApiKey.query.all()
+    return render_template('api_keys.html', keys=keys)
+
+@app.route('/api/keys/new', methods=['POST'])
+def create_api_key():
+    # Simple admin check - in a real app, use proper authentication
+    if request.remote_addr != '127.0.0.1' and request.remote_addr != '::1':
+        abort(403)
+        
+    description = request.form.get('description', '')
+    new_key = ApiKey(key=ApiKey.generate_key(), description=description)
+    
+    db.session.add(new_key)
+    db.session.commit()
+    
+    flash('New API key created successfully', 'success')
+    return redirect(url_for('list_api_keys'))
+
+@app.route('/api/keys/<int:key_id>/toggle', methods=['POST'])
+def toggle_api_key(key_id):
+    # Simple admin check - in a real app, use proper authentication
+    if request.remote_addr != '127.0.0.1' and request.remote_addr != '::1':
+        abort(403)
+        
+    key = ApiKey.query.get_or_404(key_id)
+    key.is_active = not key.is_active
+    
+    db.session.commit()
+    
+    status = 'activated' if key.is_active else 'deactivated'
+    flash(f'API key {status} successfully', 'success')
+    return redirect(url_for('list_api_keys'))
 
 @app.route('/add', methods=['GET', 'POST'])
 def add_form():

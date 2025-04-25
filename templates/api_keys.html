@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}API密钥管理{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold">API密钥管理</h1>
+    </div>
+
+    <div class="card p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">创建新API密钥</h2>
+        <form action="{{ url_for('create_api_key') }}" method="post" class="space-y-4">
+            <div>
+                <label for="description" class="block text-sm font-medium mb-1">描述（可选）</label>
+                <input type="text" id="description" name="description" class="input w-full" placeholder="例如：移动应用程序、第三方集成等">
+            </div>
+            <button type="submit" class="btn btn-primary">创建新密钥</button>
+        </form>
+    </div>
+
+    <div class="card p-6">
+        <h2 class="text-xl font-semibold mb-4">现有API密钥</h2>
+        
+        {% if keys %}
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b">
+                            <th class="py-2 text-left">密钥</th>
+                            <th class="py-2 text-left">描述</th>
+                            <th class="py-2 text-left">创建时间</th>
+                            <th class="py-2 text-left">最后使用</th>
+                            <th class="py-2 text-left">状态</th>
+                            <th class="py-2 text-left">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for key in keys %}
+                            <tr class="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <td class="py-3 font-mono text-sm">{{ key.key[:16] }}...</td>
+                                <td class="py-3">{{ key.description or '无描述' }}</td>
+                                <td class="py-3">{{ key.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td class="py-3">{{ key.last_used_at.strftime('%Y-%m-%d %H:%M') if key.last_used_at else '从未使用' }}</td>
+                                <td class="py-3">
+                                    <span class="px-2 py-1 rounded-full text-xs {{ 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' if key.is_active else 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' }}">
+                                        {{ '激活' if key.is_active else '停用' }}
+                                    </span>
+                                </td>
+                                <td class="py-3">
+                                    <form action="{{ url_for('toggle_api_key', key_id=key.id) }}" method="post" class="inline">
+                                        <button type="submit" class="text-sm underline hover:text-blue-600 dark:hover:text-blue-400">
+                                            {{ '停用' if key.is_active else '激活' }}
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-gray-600 dark:text-gray-400">尚未创建任何API密钥。</p>
+        {% endif %}
+    </div>
+
+    <div class="card p-6 mt-6">
+        <h2 class="text-xl font-semibold mb-4">API密钥使用说明</h2>
+        <div class="space-y-4">
+            <p>API密钥可以通过以下两种方式之一提供：</p>
+            <ol class="list-decimal list-inside space-y-2">
+                <li>在HTTP请求头中添加 <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">X-API-Key</code> 头</li>
+                <li>在URL查询参数中添加 <code class="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">api_key</code> 参数</li>
+            </ol>
+            <div class="bg-gray-100 dark:bg-gray-800 p-4 rounded">
+                <p class="font-semibold">示例：</p>
+                <p class="font-mono text-sm mt-2">curl -H "X-API-Key: 您的API密钥" {{ request.host_url }}api/random/5</p>
+                <p class="font-mono text-sm mt-2">{{ request.host_url }}api/random/5?api_key=您的API密钥</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

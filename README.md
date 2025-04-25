@@ -10,8 +10,9 @@ A Flask web application for storing and serving riddles, jokes, and idioms with 
 
 - Store and manage riddles, jokes, and idioms with separate question and answer fields
 - Interactive UI with show/hide functionality for answers
-- API endpoints for random retrieval of data
+- Secure API endpoints with API key authentication
 - Web interface for browsing and adding new entries
+- API key management for controlling access to API endpoints
 - Data deduplication using content hashing
 - Modern UI with shadcn UI style
 
@@ -77,6 +78,47 @@ A Flask web application for storing and serving riddles, jokes, and idioms with 
    docker stop puzzle-container
    docker rm puzzle-container
    ```
+
+## API Security
+
+This application uses API key authentication to secure API endpoints. Only requests with valid API keys are allowed to access the API.
+
+### Managing API Keys
+
+1. Access the API key management page at http://localhost:5000/api/keys
+   - Note: For security reasons, this page is only accessible from localhost (127.0.0.1)
+
+2. Create a new API key by providing an optional description
+
+3. Use the generated API key in your API requests
+
+4. You can deactivate or reactivate keys as needed from the management page
+
+### Using API Keys in Requests
+
+You can provide your API key in one of two ways:
+
+1. **HTTP Header** (recommended):
+   ```
+   X-API-Key: your_api_key_here
+   ```
+
+2. **URL Query Parameter**:
+   ```
+   ?api_key=your_api_key_here
+   ```
+
+#### Examples
+
+**Using curl with header:**
+```bash
+curl -H "X-API-Key: your_api_key_here" http://localhost:5000/api/random/5
+```
+
+**Using URL parameter:**
+```
+http://localhost:5000/api/random/5?api_key=your_api_key_here
+```
 
 ## API Endpoints
 
