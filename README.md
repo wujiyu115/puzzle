@@ -25,7 +25,17 @@ A Flask web application for storing and serving riddles, jokes, and idioms with 
    ```
    pip install -r requirements.txt
    ```
-3. Initialize the database with sample data:
+3. (可选) 配置本地网络IP地址：
+   编辑 `config.py` 文件，在 `LOCAL_NETWORK_IPS` 列表中添加允许访问管理界面的IP地址或IP模式。
+   支持精确IP地址和正则表达式模式，例如：
+   ```python
+   LOCAL_NETWORK_IPS = [
+       '127.0.0.1',  # localhost IPv4
+       '::1',        # localhost IPv6
+       '^192\.168\.\d+\.\d+$',  # 192.168.x.x 网段
+   ]
+   ```
+4. Initialize the database with sample data:
    ```
    python init_db.py
    ```
@@ -34,11 +44,11 @@ A Flask web application for storing and serving riddles, jokes, and idioms with 
    ```
    python migrate_db.py
    ```
-4. Run the application:
+5. Run the application:
    ```
    python app.py
    ```
-5. Access the application at http://localhost:5000
+6. Access the application at http://localhost:5000
 
 ### Docker Deployment
 
@@ -47,7 +57,8 @@ A Flask web application for storing and serving riddles, jokes, and idioms with 
    ```
    cp .env.example .env
    ```
-3. (Optional) Edit the `.env` file to customize settings
+3. (可选) 编辑 `config.py` 文件配置本地网络IP地址，添加允许访问管理界面的IP地址或IP模式
+4. (可选) 编辑 `.env` 文件自定义其他设置
 4. Build and start the Docker container:
    ```
    docker-compose up -d
@@ -79,6 +90,29 @@ A Flask web application for storing and serving riddles, jokes, and idioms with 
    docker rm puzzle-container
    ```
 
+## 架构说明
+
+本应用程序采用了分离式架构，将Web管理界面与API接口分离：
+
+- **Web管理界面**：仅限本地访问（localhost/127.0.0.1），提供数据管理和API密钥管理功能
+- **API接口**：允许外部访问，但需要有效的API密钥进行身份验证
+
+### 路由说明
+
+#### 仅限本地访问的Web管理界面
+
+- `/` - 首页
+- `/browse` - 浏览数据条目
+- `/add` - 添加新数据条目
+- `/api/keys` - 查看API密钥列表
+- `/api/keys/new` - 创建新API密钥
+- `/api/keys/<key_id>/toggle` - 启用/禁用API密钥
+
+#### 需要API密钥的公开API接口
+
+- `/api/random/<count>` - 获取随机数据条目
+- `/api/add` - 添加新数据条目
+
 ## API Security
 
 This application uses API key authentication to secure API endpoints. Only requests with valid API keys are allowed to access the API.
@@ -86,7 +120,7 @@ This application uses API key authentication to secure API endpoints. Only reque
 ### Managing API Keys
 
 1. Access the API key management page at http://localhost:5000/api/keys
-   - Note: For security reasons, this page is only accessible from localhost (127.0.0.1)
+   - **Important**: For security reasons, this page and all web management interfaces are ONLY accessible from localhost (127.0.0.1)
 
 2. Create a new API key by providing an optional description
 

@@ -104,15 +104,45 @@ with app.app_context():
 def inject_now():
     return {'now': datetime.now()}
 
-# Routes
-@app.route('/')
-def index():
-    return render_template('index.html')
+# Decorators for access control
 
-# API Key verification decorator
+# Helper function to check if request is from localhost
+def is_local_request():
+    """Check if the request is coming from localhost/local network
+    
+    根据config.py中的LOCAL_NETWORK_IPS配置检查请求IP是否在允许的本地网络范围内
+    支持精确匹配和正则表达式模式匹配
+    """
+    from config import LOCAL_NETWORK_IPS
+    import re
+    
+    client_ip = request.remote_addr
+    
+    # 检查IP是否在允许列表中
+    for ip_pattern in LOCAL_NETWORK_IPS:
+        # 如果是精确匹配
+        if client_ip == ip_pattern:
+            return True
+        # 如果是正则表达式模式
+        try:
+            if re.match(ip_pattern, client_ip):
+                return True
+        except re.error:
+            # 如果正则表达式无效，则跳过该模式
+            continue
+    
+    return False
+
+# API Key verification decorator for API endpoints
 def require_api_key(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Check if request is coming from localhost/local network
+        if is_local_request():
+            # Skip API key verification for local network requests
+            return f(*args, **kwargs)
+            
+        # For non-local requests, require API key
         api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
         
         if not api_key:
@@ -129,6 +159,22 @@ def require_api_key(f):
         
         return f(*args, **kwargs)
     return decorated_function
+
+# Local access only decorator for admin/management routes
+def local_access_only(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check if request is coming from localhost
+        if not is_local_request():
+            abort(403, description="Access denied. This page is only accessible from localhost.")
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Routes
+@app.route('/')
+@local_access_only
+def index():
+    return render_template('index.html')
 
 # API Routes
 @app.route('/api/random/<int:count>', methods=['GET'])
@@ -249,6 +295,7 @@ def add_entry():
         return jsonify({'error': f'Failed to add entry: {str(e)}'}), 500
 
 @app.route('/browse')
+@local_access_only
 def browse():
     category = request.args.get('category')
     page = request.args.get('page', 1, type=int)
@@ -265,20 +312,14 @@ def browse():
 
 # API Key management routes
 @app.route('/api/keys', methods=['GET'])
+@local_access_only
 def list_api_keys():
-    # Simple admin check - in a real app, use proper authentication
-    if request.remote_addr != '127.0.0.1' and request.remote_addr != '::1':
-        abort(403)
-        
     keys = ApiKey.query.all()
     return render_template('api_keys.html', keys=keys)
 
 @app.route('/api/keys/new', methods=['POST'])
+@local_access_only
 def create_api_key():
-    # Simple admin check - in a real app, use proper authentication
-    if request.remote_addr != '127.0.0.1' and request.remote_addr != '::1':
-        abort(403)
-        
     description = request.form.get('description', '')
     new_key = ApiKey(key=ApiKey.generate_key(), description=description)
     
@@ -289,11 +330,8 @@ def create_api_key():
     return redirect(url_for('list_api_keys'))
 
 @app.route('/api/keys/<int:key_id>/toggle', methods=['POST'])
+@local_access_only
 def toggle_api_key(key_id):
-    # Simple admin check - in a real app, use proper authentication
-    if request.remote_addr != '127.0.0.1' and request.remote_addr != '::1':
-        abort(403)
-        
     key = ApiKey.query.get_or_404(key_id)
     key.is_active = not key.is_active
     
@@ -304,6 +342,7 @@ def toggle_api_key(key_id):
     return redirect(url_for('list_api_keys'))
 
 @app.route('/add', methods=['GET', 'POST'])
+@local_access_only
 def add_form():
     if request.method == 'POST':
         question = request.form.get('question', '').strip()
@@ -353,4 +392,6 @@ def add_form():
     return render_template('add.html')
 
 if __name__ == '__main__':
+    # 使用0.0.0.0作为主机以允许外部访问API接口
+    # Web管理界面通过装饰器限制只能从本地访问
     app.run(debug=True, host='0.0.0.0')
