@@ -9,11 +9,15 @@ from datetime import datetime
 from functools import wraps
 import json
 from typing import Dict, Any, List
+from logger import get_logger, log_exception
+
+# 获取当前模块的日志记录器
+logger = get_logger()
 
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-for-testing')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///puzzle_data.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///data/puzzle_data.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database
@@ -61,45 +65,33 @@ class ApiKey(db.Model):
         combined = f"{question}|{answer}"
         return hashlib.md5(combined.encode()).hexdigest()
 
-# Ensure data directory exists and database file is created
-db_uri = app.config['SQLALCHEMY_DATABASE_URI']
-if db_uri.startswith('sqlite:///'):
-    db_path = db_uri.replace('sqlite:///', '')
-    if not os.path.isabs(db_path):
-        db_path = os.path.join(os.getcwd(), db_path)
 
-    # Create directory if it doesn't exist
-    db_dir = os.path.dirname(db_path)
-    if db_dir and not os.path.exists(db_dir):
-        os.makedirs(db_dir)
-        print(f"Created directory: {db_dir}")
-
-    # Remove empty database file if it exists but has zero size
-    if os.path.exists(db_path) and os.path.getsize(db_path) == 0:
-        try:
-            os.remove(db_path)
-            print(f"Removed empty database file: {db_path}")
-        except Exception as e:
-            print(f"Error removing empty database file: {e}")
-
-    # Create a new database file using direct SQLite connection if it doesn't exist
-    if not os.path.exists(db_path):
-        try:
-            # Create an empty SQLite database file
-            conn = sqlite3.connect(db_path)
-            conn.close()
-            print(f"Created new SQLite database file: {db_path}")
-        except Exception as e:
-            print(f"Error creating SQLite database file: {e}")
 
 # Initialize database within app context
 with app.app_context():
     try:
+        # Ensure data directory exists and database file is created
+        db_uri = app.config['SQLALCHEMY_DATABASE_URI']
+        if db_uri.startswith('sqlite:///'):
+            db_path = db_uri.replace('sqlite:///', '')
+            if not os.path.isabs(db_path):
+                db_path = os.path.join(os.getcwd(), db_path)
+
+            # Create directory if it doesn't exist
+            db_dir = os.path.dirname(db_path)
+            if db_dir and not os.path.exists(db_dir):
+                os.makedirs(db_dir)
+                logger.info(f"Created directory: {db_dir}")
+        # if not os.path.exists(db_path):
+        #     conn = sqlite3.connect(db_path)
+        #     conn.close()
+        #     logger.info(f"Created new SQLite database file: {db_path}")
         # Create all tables
         db.create_all()
-        print("Database tables created successfully")
+        logger.info("Database tables created successfully")
     except Exception as e:
-        print(f"Error creating database tables: {e}")
+        # 记录异常信息，包括完整的堆栈跟踪
+        log_exception(logger, f"Error creating database tables: {db_path}")
 
 # Context processor to make datetime available in all templates
 @app.context_processor
@@ -294,6 +286,8 @@ def add_entry():
         }), 201
     except Exception as e:
         db.session.rollback()
+        # 记录异常信息，包括完整的堆栈跟踪
+        log_exception(logger, "Failed to add entry via API")
         return jsonify({'error': f'Failed to add entry: {str(e)}'}), 500
 
 @app.route('/browse')
@@ -388,6 +382,8 @@ def add_form():
             return redirect(url_for('browse'))
         except Exception as e:
             db.session.rollback()
+            # 记录异常信息，包括完整的堆栈跟踪
+            log_exception(logger, "Error adding entry via web form")
             flash(f'Error adding entry: {str(e)}', 'error')
             return redirect(url_for('add_form'))
 

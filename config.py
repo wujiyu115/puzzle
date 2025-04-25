@@ -1,4 +1,10 @@
 # 配置文件
+import os
+import logging
+
+# 日志配置
+LOG_LEVEL = logging.INFO
+LOG_DIR = os.path.join(os.getcwd(), 'logs')
 
 # 本地网络IP地址列表
 # 支持以下格式：

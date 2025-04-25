@@ -1,5 +1,8 @@
 from app import app, db, DataEntry
-import json
+from logger import get_logger, log_exception
+
+# 获取当前模块的日志记录器
+logger = get_logger()
 
 # Sample data
 sample_data = [
@@ -30,13 +33,13 @@ def init_db():
         with app.app_context():
             # Create tables if they don't exist
             db.create_all()
-            print("Database tables created or already exist")
+            logger.info("Database tables created or already exist")
 
             # Check if database is empty
             try:
                 entry_count = DataEntry.query.count()
                 if entry_count == 0:
-                    print("Initializing database with sample data...")
+                    logger.info("Initializing database with sample data...")
 
                     # Add sample data
                     for item in sample_data:
@@ -55,14 +58,16 @@ def init_db():
                             db.session.add(entry)
 
                     db.session.commit()
-                    print(f"Added {len(sample_data)} sample entries")
+                    logger.info(f"Added {len(sample_data)} sample entries")
                 else:
-                    print(f"Database already contains {entry_count} entries. Skipping initialization.")
+                    logger.info(f"Database already contains {entry_count} entries. Skipping initialization.")
             except Exception as e:
-                print(f"Error checking or adding data: {e}")
+                # 记录异常信息，包括完整的堆栈跟踪
+                log_exception(logger, "Error checking or adding data")
                 db.session.rollback()
     except Exception as e:
-        print(f"Error initializing database: {e}")
+        # 记录异常信息，包括完整的堆栈跟踪
+        log_exception(logger, "Error initializing database")
 
 if __name__ == "__main__":
     init_db()
