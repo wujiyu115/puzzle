@@ -4,11 +4,11 @@
 
 > **Note:** Replace `username` in the badge URL with your GitHub username after forking/cloning the repository.
 
-A Flask web application for storing and serving riddles, jokes, and idioms with a SQLite database.
+A Flask web application for storing and serving riddles, jokes, idioms, and brain teasers with a SQLite database.
 
 ## Features
 
-- Store and manage riddles, jokes, and idioms with separate question and answer fields
+- Store and manage riddles, jokes, idioms, and brain teasers with separate question and answer fields
 - Interactive UI with show/hide functionality for answers
 - Secure API endpoints with API key authentication
 - Web interface for browsing and adding new entries
@@ -215,7 +215,7 @@ CREATE TABLE data_entries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     question TEXT NOT NULL,
     answer TEXT NOT NULL,
-    category TEXT CHECK(category IN ('riddle', 'joke', 'idiom')) NOT NULL,
+    category TEXT CHECK(category IN ('riddle', 'joke', 'idiom', 'brain_teaser')) NOT NULL,
     content_hash TEXT UNIQUE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

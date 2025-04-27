@@ -29,7 +29,14 @@ sample_data = [
     {"question": "司空见惯", "answer": "常见的事物，不足为奇", "category": "idiom"},
     {"question": "拐弯抹角", "answer": "说话不直接，绕来绕去", "category": "idiom"},
     {"question": "破釜沉舟", "answer": "下定决心，不留退路", "category": "idiom"},
-    {"question": "马到成功", "answer": "祝愿一切顺利，很快成功", "category": "idiom"}
+    {"question": "马到成功", "answer": "祝愿一切顺利，很快成功", "category": "idiom"},
+
+    # Brain Teasers (脑筋急转弯)
+    {"question": "什么东西越洗越脏？", "answer": "洗澡水", "category": "brain_teaser"},
+    {"question": "什么东西黑人用了变白，白人用了变黑？", "answer": "牙膏", "category": "brain_teaser"},
+    {"question": "什么门永远关不上？", "answer": "问题", "category": "brain_teaser"},
+    {"question": "什么东西有头无脚？", "answer": "钉子", "category": "brain_teaser"},
+    {"question": "什么东西晚上才会长出来？", "answer": "星星", "category": "brain_teaser"}
 ]
 
 def init_db():

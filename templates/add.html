@@ -15,6 +15,7 @@
                     <option value="riddle">谜语</option>
                     <option value="joke">笑话</option>
                     <option value="idiom">成语</option>
+                    <option value="brain_teaser">脑筋急转弯</option>
                 </select>
             </div>
 
@@ -49,6 +50,7 @@
                 <option value="riddle">谜语</option>
                 <option value="joke">笑话</option>
                 <option value="idiom">成语</option>
+                <option value="brain_teaser">脑筋急转弯</option>
             </select>
         </div>
 
@@ -127,6 +129,14 @@
 4. 不要有编号
 5. 直接给出成语内容，不要有多余的解释`;
                 break;
+            case 'brain_teaser':
+                prompt = `请生成${count}个有趣的脑筋急转弯，每个脑筋急转弯包含问题和答案。格式要求：
+1. 每个脑筋急转弯必须包含问题和答案
+2. 问题和答案之间用"答案："分隔
+3. 每个脑筋急转弯之间用"---"分隔
+4. 不要有编号
+5. 直接给出脑筋急转弯内容，不要有多余的解释`;
+                break;
         }
 
         // 调用LLM API
@@ -164,7 +174,7 @@
                 let question = '';
                 let answer = '';
 
-                if (category === 'riddle' || category === 'joke') {
+                if (category === 'riddle' || category === 'joke' || category === 'brain_teaser') {
                     const parts = item.split('答案：');
                     if (parts.length > 1) {
                         question = parts[0].trim();
@@ -308,7 +318,7 @@
                             batchText += '\n---\n';
                         }
 
-                        if (category === 'riddle' || category === 'joke') {
+                        if (category === 'riddle' || category === 'joke' || category === 'brain_teaser') {
                             batchText += question + '\n答案：' + answer;
                         } else { // idiom
                             batchText += question + '\n含义：' + answer;

@@ -15,15 +15,15 @@
     <div class="text-center mb-12">
         <h1 class="text-4xl font-bold mb-4">欢迎来到谜题收藏</h1>
         <p class="text-xl text-gray-600 dark:text-gray-400">
-            为您的娱乐收集的谜语、笑话和成语
+            为您的娱乐收集的谜语、笑话、成语和脑筋急转弯
         </p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         <div class="card p-6 text-center">
             <h2 class="text-2xl font-semibold mb-4">谜语</h2>
             <p class="text-gray-600 dark:text-gray-400 mb-6">
-                用我们收集的脑筋急转弯和谜语挑战您的思维
+                用我们收集的谜语挑战您的思维
             </p>
             <a href="/browse?category=riddle" class="btn btn-primary">浏览谜语</a>
         </div>
@@ -43,6 +43,14 @@
             </p>
             <a href="/browse?category=idiom" class="btn btn-primary">浏览成语</a>
         </div>
+
+        <div class="card p-6 text-center">
+            <h2 class="text-2xl font-semibold mb-4">脑筋急转弯</h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">
+                挑战您的思维，享受脑筋急转弯的乐趣
+            </p>
+            <a href="/browse?category=brain_teaser" class="btn btn-primary">浏览脑筋急转弯</a>
+        </div>
     </div>
 
     <div class="card p-8 mb-12">
@@ -52,6 +60,7 @@
             <button class="btn btn-secondary" onclick="loadRandom('riddle')">谜语</button>
             <button class="btn btn-secondary" onclick="loadRandom('joke')">笑话</button>
             <button class="btn btn-secondary" onclick="loadRandom('idiom')">成语</button>
+            <button class="btn btn-secondary" onclick="loadRandom('brain_teaser')">脑筋急转弯</button>
         </div>
         <div id="random-entries" class="space-y-4">
             <p class="text-gray-600 dark:text-gray-400 text-center">
@@ -137,6 +146,8 @@
                 return 'inline-block px-2 py-1 text-xs font-semibold rounded bg-green-100 text-green-800';
             case 'idiom':
                 return 'inline-block px-2 py-1 text-xs font-semibold rounded bg-purple-100 text-purple-800';
+            case 'brain_teaser':
+                return 'inline-block px-2 py-1 text-xs font-semibold rounded bg-orange-100 text-orange-800';
             default:
                 return 'inline-block px-2 py-1 text-xs font-semibold rounded bg-gray-100 text-gray-800';
         }
