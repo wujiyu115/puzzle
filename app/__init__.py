@@ -14,7 +14,20 @@ def create_app():
     
     # 配置
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-for-testing')
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///data/puzzle_data.db')
+    
+    # 确保数据库URI使用正确的路径格式
+    db_uri = os.environ.get('SQLALCHEMY_DATABASE_URI')
+    if not db_uri:
+        # 获取应用根目录
+        app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        # 使用绝对路径构建数据库URI
+        data_dir = os.path.join(app_root, 'data')
+        db_path = os.path.join(data_dir, 'puzzle_data.db')
+        # 规范化路径并转换为URI格式
+        db_path = os.path.normpath(db_path)
+        db_uri = f'sqlite:///{db_path}'
+    
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     # 初始化扩展
@@ -26,24 +39,46 @@ def create_app():
         logger = get_logger('app')
         
         try:
-            # # 确保数据目录存在
+            # 确保数据目录存在
             db_uri = app.config['SQLALCHEMY_DATABASE_URI']
             if db_uri.startswith('sqlite:///'):
                 db_path = db_uri.replace('sqlite:///', '')
+                
+                # 处理相对路径，确保路径解析正确
                 if not os.path.isabs(db_path):
-                    db_path = os.path.join(os.getcwd(), db_path)
+                    # 获取应用根目录（app.py所在目录）
+                    app_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+                    db_path = os.path.join(app_root, db_path)
+                    
+                    # 规范化路径分隔符，确保跨平台兼容性
+                    db_path = os.path.normpath(db_path)
+                    logger.info(f"Resolved database path: {db_path}")
                 
                 # 创建目录（如果不存在）
                 db_dir = os.path.dirname(db_path)
                 if db_dir and not os.path.exists(db_dir):
-                    os.makedirs(db_dir)
-                    logger.info(f"Created directory: {db_dir}")
+                    try:
+                        os.makedirs(db_dir, exist_ok=True)
+                        logger.info(f"Created directory: {db_dir}")
+                    except PermissionError as pe:
+                        logger.error(f"Permission error creating directory {db_dir}: {str(pe)}")
+                        raise
+                    except Exception as ex:
+                        logger.error(f"Error creating directory {db_dir}: {str(ex)}")
+                        raise
+                
+                # 验证数据库目录是否可写
+                if not os.access(db_dir, os.W_OK):
+                    logger.error(f"Database directory is not writable: {db_dir}")
+                    raise PermissionError(f"Database directory is not writable: {db_dir}")
             
             # 创建所有表
             db.create_all()
             logger.info("Database tables created successfully")
         except Exception as e:
-            log_exception(logger, f"Error creating database tables")
+            logger.error(f"Error creating database tables: {db_uri}")
+            logger.error(f"Exception details: {str(e)}")
+            log_exception(logger, "Error creating database tables")
     
     # 注册上下文处理器
     from datetime import datetime

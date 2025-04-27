@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Puzzle Collection - Home{% endblock %}
+{% block title %}谜题收藏 - 首页{% endblock %}
 
 {% block head %}
 <style>
@@ -13,55 +13,55 @@
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <div class="text-center mb-12">
-        <h1 class="text-4xl font-bold mb-4">Welcome to Puzzle Collection</h1>
+        <h1 class="text-4xl font-bold mb-4">欢迎来到谜题收藏</h1>
         <p class="text-xl text-gray-600 dark:text-gray-400">
-            A collection of riddles, jokes, and idioms for your entertainment
+            为您的娱乐收集的谜语、笑话和成语
         </p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <div class="card p-6 text-center">
-            <h2 class="text-2xl font-semibold mb-4">Riddles</h2>
+            <h2 class="text-2xl font-semibold mb-4">谜语</h2>
             <p class="text-gray-600 dark:text-gray-400 mb-6">
-                Challenge your mind with our collection of brain teasers and riddles
+                用我们收集的脑筋急转弯和谜语挑战您的思维
             </p>
-            <a href="/browse?category=riddle" class="btn btn-primary">Browse Riddles</a>
+            <a href="/browse?category=riddle" class="btn btn-primary">浏览谜语</a>
         </div>
 
         <div class="card p-6 text-center">
-            <h2 class="text-2xl font-semibold mb-4">Jokes</h2>
+            <h2 class="text-2xl font-semibold mb-4">笑话</h2>
             <p class="text-gray-600 dark:text-gray-400 mb-6">
-                Laugh out loud with our collection of funny jokes
+                开怀大笑，尽享我们收集的有趣笑话
             </p>
-            <a href="/browse?category=joke" class="btn btn-primary">Browse Jokes</a>
+            <a href="/browse?category=joke" class="btn btn-primary">浏览笑话</a>
         </div>
 
         <div class="card p-6 text-center">
-            <h2 class="text-2xl font-semibold mb-4">Idioms</h2>
+            <h2 class="text-2xl font-semibold mb-4">成语</h2>
             <p class="text-gray-600 dark:text-gray-400 mb-6">
-                Explore our collection of idioms and their meanings
+                探索我们收集的成语及其含义
             </p>
-            <a href="/browse?category=idiom" class="btn btn-primary">Browse Idioms</a>
+            <a href="/browse?category=idiom" class="btn btn-primary">浏览成语</a>
         </div>
     </div>
 
     <div class="card p-8 mb-12">
-        <h2 class="text-2xl font-semibold mb-4">Random Entries</h2>
+        <h2 class="text-2xl font-semibold mb-4">随机条目</h2>
         <div class="flex space-x-4 mb-6">
-            <button class="btn btn-secondary" onclick="loadRandom('all')">All Categories</button>
-            <button class="btn btn-secondary" onclick="loadRandom('riddle')">Riddles</button>
-            <button class="btn btn-secondary" onclick="loadRandom('joke')">Jokes</button>
-            <button class="btn btn-secondary" onclick="loadRandom('idiom')">Idioms</button>
+            <button class="btn btn-secondary" onclick="loadRandom('all')">所有类别</button>
+            <button class="btn btn-secondary" onclick="loadRandom('riddle')">谜语</button>
+            <button class="btn btn-secondary" onclick="loadRandom('joke')">笑话</button>
+            <button class="btn btn-secondary" onclick="loadRandom('idiom')">成语</button>
         </div>
         <div id="random-entries" class="space-y-4">
             <p class="text-gray-600 dark:text-gray-400 text-center">
-                Click one of the buttons above to load random entries
+                点击上方按钮加载随机条目
             </p>
         </div>
     </div>
 
     <div class="text-center">
-        <a href="/add" class="btn btn-primary">Add New Entry</a>
+        <a href="/add" class="btn btn-primary">添加新条目</a>
     </div>
 </div>
 {% endblock %}
@@ -81,7 +81,7 @@
                 if (data.length === 0) {
                     container.innerHTML = `
                         <p class="text-gray-600 dark:text-gray-400 text-center">
-                            No entries found for this category
+                            未找到此类别的条目
                         </p>
                     `;
                     return;
@@ -105,7 +105,7 @@
                                 <div class="answer-container mb-2">
                                     <button class="text-sm text-blue-600 hover:text-blue-800 mb-1 toggle-answer"
                                             onclick="toggleAnswer(this)">
-                                        Show Answer
+                                        显示答案
                                     </button>
                                     <p class="answer hidden bg-gray-50 p-2 rounded">${entry.answer}</p>
                                 </div>

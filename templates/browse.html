@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Browse Entries{% endblock %}
+{% block title %}浏览条目{% endblock %}
 
 {% block head %}
 <style>
@@ -13,12 +13,12 @@
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <div class="flex justify-between items-center mb-8">
-        <h1 class="text-3xl font-bold">Browse Entries</h1>
+        <h1 class="text-3xl font-bold">浏览条目</h1>
         <div class="flex space-x-2">
-            <a href="/browse" class="btn btn-secondary {% if not category %}opacity-50{% endif %}">All</a>
-            <a href="/browse?category=riddle" class="btn btn-secondary {% if category == 'riddle' %}opacity-50{% endif %}">Riddles</a>
-            <a href="/browse?category=joke" class="btn btn-secondary {% if category == 'joke' %}opacity-50{% endif %}">Jokes</a>
-            <a href="/browse?category=idiom" class="btn btn-secondary {% if category == 'idiom' %}opacity-50{% endif %}">Idioms</a>
+            <a href="/browse" class="btn btn-secondary {% if not category %}opacity-50{% endif %}">全部</a>
+            <a href="/browse?category=riddle" class="btn btn-secondary {% if category == 'riddle' %}opacity-50{% endif %}">谜语</a>
+            <a href="/browse?category=joke" class="btn btn-secondary {% if category == 'joke' %}opacity-50{% endif %}">笑话</a>
+            <a href="/browse?category=idiom" class="btn btn-secondary {% if category == 'idiom' %}opacity-50{% endif %}">成语</a>
         </div>
     </div>
 
@@ -49,7 +49,7 @@
                             <div class="answer-container mb-2">
                                 <button class="text-sm text-blue-600 hover:text-blue-800 mb-1 toggle-answer"
                                         onclick="toggleAnswer(this)">
-                                    Show Answer
+                                    显示答案
                                 </button>
                                 <p class="answer hidden bg-gray-50 p-2 rounded">{{ entry.answer }}</p>
                             </div>
@@ -65,9 +65,9 @@
         <div class="flex justify-center">
             <div class="flex space-x-1">
                 {% if pagination.has_prev %}
-                    <a href="{{ url_for('browse', page=pagination.prev_num, category=category) }}" class="btn btn-secondary">&laquo; Previous</a>
+                    <a href="{{ url_for('browse', page=pagination.prev_num, category=category) }}" class="btn btn-secondary">&laquo; 上一页</a>
                 {% else %}
-                    <span class="btn btn-secondary opacity-50">&laquo; Previous</span>
+                    <span class="btn btn-secondary opacity-50">&laquo; 上一页</span>
                 {% endif %}
 
                 {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
@@ -83,16 +83,16 @@
                 {% endfor %}
 
                 {% if pagination.has_next %}
-                    <a href="{{ url_for('browse', page=pagination.next_num, category=category) }}" class="btn btn-secondary">Next &raquo;</a>
+                    <a href="{{ url_for('browse', page=pagination.next_num, category=category) }}" class="btn btn-secondary">下一页 &raquo;</a>
                 {% else %}
-                    <span class="btn btn-secondary opacity-50">Next &raquo;</span>
+                    <span class="btn btn-secondary opacity-50">下一页 &raquo;</span>
                 {% endif %}
             </div>
         </div>
     {% else %}
         <div class="card p-8 text-center">
-            <p class="text-xl text-gray-600 dark:text-gray-400 mb-4">No entries found</p>
-            <a href="/add" class="btn btn-primary">Add New Entry</a>
+            <p class="text-xl text-gray-600 dark:text-gray-400 mb-4">未找到条目</p>
+            <a href="/add" class="btn btn-primary">添加新条目</a>
         </div>
     {% endif %}
 </div>
@@ -105,11 +105,11 @@
         if (answerElement.classList.contains('hidden')) {
             // Show answer
             answerElement.classList.remove('hidden');
-            button.textContent = 'Hide Answer';
+            button.textContent = '隐藏答案';
         } else {
             // Hide answer
             answerElement.classList.add('hidden');
-            button.textContent = 'Show Answer';
+            button.textContent = '显示答案';
         }
     }
 </script>

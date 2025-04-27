@@ -1,35 +1,35 @@
 {% extends "base.html" %}
 
-{% block title %}Add New Entry{% endblock %}
+{% block title %}添加新条目{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto">
-    <h1 class="text-3xl font-bold mb-8">Add New Entry</h1>
+    <h1 class="text-3xl font-bold mb-8">添加新条目</h1>
 
     <div class="card p-6 mb-8">
         <form method="POST" action="/add">
             <div class="mb-4">
-                <label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                <label for="category" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">类别</label>
                 <select id="category" name="category" class="select" required>
-                    <option value="" disabled selected>Select a category</option>
-                    <option value="riddle">Riddle</option>
-                    <option value="joke">Joke</option>
-                    <option value="idiom">Idiom</option>
+                    <option value="" disabled selected>选择类别</option>
+                    <option value="riddle">谜语</option>
+                    <option value="joke">笑话</option>
+                    <option value="idiom">成语</option>
                 </select>
             </div>
 
             <div class="mb-4">
-                <label for="question" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Question</label>
-                <textarea id="question" name="question" rows="3" class="input" required placeholder="Enter the question or first part"></textarea>
+                <label for="question" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">问题</label>
+                <textarea id="question" name="question" rows="3" class="input" required placeholder="输入问题或第一部分"></textarea>
             </div>
 
             <div class="mb-6">
-                <label for="answer" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Answer</label>
-                <textarea id="answer" name="answer" rows="3" class="input" required placeholder="Enter the answer or second part"></textarea>
+                <label for="answer" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">答案</label>
+                <textarea id="answer" name="answer" rows="3" class="input" required placeholder="输入答案或第二部分"></textarea>
             </div>
 
             <div class="flex justify-end">
-                <button type="submit" class="btn btn-primary">Add Entry</button>
+                <button type="submit" class="btn btn-primary">添加条目</button>
             </div>
         </form>
     </div>

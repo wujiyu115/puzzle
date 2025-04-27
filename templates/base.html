@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Puzzle Collection{% endblock %}</title>
+    <title>{% block title %}谜题收藏{% endblock %}</title>
 
     <!-- Tailwind CSS for shadcn UI style -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -151,11 +151,11 @@
 <body class="min-h-screen">
     <header class="bg-white shadow-sm border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <a href="/" class="text-xl font-bold">Puzzle Collection</a>
+            <a href="/" class="text-xl font-bold">谜题收藏</a>
             <nav class="space-x-4">
-                <a href="/" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Home</a>
-                <a href="/browse" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Browse</a>
-                <a href="/add" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">Add New</a>
+                <a href="/" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">首页</a>
+                <a href="/browse" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">浏览</a>
+                <a href="/add" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">新增</a>
             </nav>
         </div>
     </header>
@@ -176,7 +176,7 @@
 
     <footer class="bg-gray-100 border-t border-gray-200 dark:bg-gray-900 dark:border-gray-800 py-6">
         <div class="container mx-auto px-4 text-center text-gray-600 dark:text-gray-400">
-            <p>&copy; {{ now.year }} Puzzle Collection. All rights reserved.</p>
+            <p>&copy; {{ now.year }} 谜题收藏. 保留所有权利.</p>
         </div>
     </footer>
 
