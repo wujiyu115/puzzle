@@ -11,7 +11,7 @@ COPY . .
 
 # Create volumes for the database and config file
 VOLUME /app/data
-VOLUME /app/app/config.py
+VOLUME /app/app
 
 # Set environment variables
 ENV FLASK_APP=run.py
