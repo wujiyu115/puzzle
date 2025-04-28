@@ -121,7 +121,8 @@ def init_db():
                 db.session.rollback()
     except Exception:
         # 记录异常信息，包括完整的堆栈跟踪
-        log_exception(logger, "初始化数据库时出错")
+        logger.error("初始化数据库时出错")
+        # log_exception(logger, "初始化数据库时出错")
 
 if __name__ == "__main__":
     init_db()

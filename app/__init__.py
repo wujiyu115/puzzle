@@ -4,7 +4,9 @@ Puzzle Collection Application
 import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-
+from app.utils.logger import get_logger, log_exception
+logger = get_logger('app')
+        
 # 初始化数据库
 db = SQLAlchemy()
 
@@ -26,6 +28,7 @@ def create_app():
         # 规范化路径并转换为URI格式
         db_path = os.path.normpath(db_path)
         db_uri = f'sqlite:///{db_path}'
+        logger.info(f"Resolved init database path: {db_path}")
     
     app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -35,8 +38,6 @@ def create_app():
     
     # 确保数据目录存在
     with app.app_context():
-        from app.utils.logger import get_logger, log_exception
-        logger = get_logger('app')
         
         try:
             # 确保数据目录存在
@@ -77,8 +78,7 @@ def create_app():
             logger.info("Database tables created successfully")
         except Exception as e:
             logger.error(f"Error creating database tables: {db_uri}")
-            logger.error(f"Exception details: {str(e)}")
-            log_exception(logger, "Error creating database tables")
+            # log_exception(logger, "Error creating database tables")
     
     # 注册上下文处理器
     from datetime import datetime
