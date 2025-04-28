@@ -8,6 +8,9 @@ from app.models import ApiKey
 from datetime import datetime
 from app import db
 from app.config import LOCAL_NETWORK_IPS
+from app.utils.logger import get_logger
+
+logger = get_logger('auth')
 
 # 检查请求是否来自本地网络
 def is_local_request():
@@ -31,7 +34,7 @@ def is_local_request():
         except re.error:
             # 如果正则表达式无效，则跳过该模式
             continue
-    
+    logger.warning(f"拒绝来自非本地网络的请求: {client_ip}")
     return False
 
 # API密钥验证装饰器
