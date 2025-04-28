@@ -10,7 +10,7 @@
 
     <div class="card p-6 mb-6">
         <h2 class="text-xl font-semibold mb-4">创建新API密钥</h2>
-        <form action="{{ url_for('create_api_key') }}" method="post" class="space-y-4">
+        <form action="{{ url_for('admin.create_api_key') }}" method="post" class="space-y-4">
             <div>
                 <label for="description" class="block text-sm font-medium mb-1">描述（可选）</label>
                 <input type="text" id="description" name="description" class="input w-full" placeholder="例如：移动应用程序、第三方集成等">
@@ -21,7 +21,7 @@
 
     <div class="card p-6">
         <h2 class="text-xl font-semibold mb-4">现有API密钥</h2>
-        
+
         {% if keys %}
             <div class="overflow-x-auto">
                 <table class="w-full">
@@ -38,7 +38,20 @@
                     <tbody>
                         {% for key in keys %}
                             <tr class="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
-                                <td class="py-3 font-mono text-sm">{{ key.key[:16] }}...</td>
+                                <td class="py-3">
+                                    <div class="flex items-center">
+                                        <span class="font-mono text-sm mr-2" id="key-{{ key.id }}">{{ key.key[:16] }}...</span>
+                                        <button type="button"
+                                                class="copy-btn text-gray-500 hover:text-blue-600 focus:outline-none"
+                                                data-key="{{ key.key }}"
+                                                data-key-id="{{ key.id }}"
+                                                title="复制完整密钥">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </td>
                                 <td class="py-3">{{ key.description or '无描述' }}</td>
                                 <td class="py-3">{{ key.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                                 <td class="py-3">{{ key.last_used_at.strftime('%Y-%m-%d %H:%M') if key.last_used_at else '从未使用' }}</td>
@@ -48,7 +61,7 @@
                                     </span>
                                 </td>
                                 <td class="py-3">
-                                    <form action="{{ url_for('toggle_api_key', key_id=key.id) }}" method="post" class="inline">
+                                    <form action="{{ url_for('admin.toggle_api_key', key_id=key.id) }}" method="post" class="inline">
                                         <button type="submit" class="text-sm underline hover:text-blue-600 dark:hover:text-blue-400">
                                             {{ '停用' if key.is_active else '激活' }}
                                         </button>
@@ -80,4 +93,54 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 获取所有复制按钮
+        const copyButtons = document.querySelectorAll('.copy-btn');
+
+        // 为每个按钮添加点击事件
+        copyButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // 获取完整的API密钥
+                const apiKey = this.getAttribute('data-key');
+                const keyId = this.getAttribute('data-key-id');
+                const keySpan = document.getElementById('key-' + keyId);
+
+                // 创建一个临时文本区域来复制文本
+                const textarea = document.createElement('textarea');
+                textarea.value = apiKey;
+                textarea.setAttribute('readonly', '');
+                textarea.style.position = 'absolute';
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+
+                // 选择文本并复制
+                textarea.select();
+                document.execCommand('copy');
+
+                // 移除临时文本区域
+                document.body.removeChild(textarea);
+
+                // 显示复制成功的反馈
+                const originalText = keySpan.textContent;
+                const originalButtonColor = button.classList.contains('text-green-600') ? 'text-green-600' : 'text-gray-500';
+
+                // 更改按钮颜色和文本显示
+                button.classList.remove('text-gray-500', 'text-green-600');
+                button.classList.add('text-green-600');
+                keySpan.textContent = '已复制!';
+
+                // 2秒后恢复原样
+                setTimeout(() => {
+                    button.classList.remove('text-green-600');
+                    button.classList.add(originalButtonColor);
+                    keySpan.textContent = originalText;
+                }, 2000);
+            });
+        });
+    });
+</script>
 {% endblock %}
