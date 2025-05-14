@@ -20,6 +20,25 @@ BASE_URL = "http://www.cmiyu.com"
 ETMY_URL = f"{BASE_URL}/etmy/"
 OUTPUT_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "origin_data", "riddle.txt")
 
+
+def join_url(base, path):
+    """
+    正确拼接URL，避免出现域名和路径直接连接的问题
+    """
+    if not path:
+        return base
+    
+    # 如果是完整URL，直接返回
+    if path.startswith('http'):
+        return path
+    
+    # 确保base不以/结尾，path以/开头
+    base = base.rstrip('/')
+    if not path.startswith('/'):
+        path = '/' + path
+    
+    return base + path
+
 # 请求头，模拟浏览器访问
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36",
@@ -33,6 +52,12 @@ def get_page_content(url):
     获取页面内容
     """
     try:
+        print(f"正在请求: {url}")
+        # 验证URL格式
+        if not url.startswith('http'):
+            print(f"无效的URL格式: {url}")
+            return None
+            
         response = requests.get(url, headers=HEADERS, timeout=10)
         # 尝试多种编码方式，解决乱码问题
         # 先尝试自动检测
@@ -70,75 +95,94 @@ def get_riddle_page_urls():
     for link in soup.find_all("a"):
         href = link.get("href")
         if href and "/etmy/" in href and href != ETMY_URL:
-            # 确保是完整URL
-            if not href.startswith("http"):
-                href = BASE_URL + href
-            if href != ETMY_URL:
-                urls.append(href)
+            # 使用join_url函数确保URL正确拼接
+            full_url = join_url(BASE_URL, href)
+            if full_url != ETMY_URL:
+                urls.append(full_url)
+    
+    # 查找分页链接
+    next_page = soup.select_one('li.sy3 > a:contains("下一页")')
+    if next_page and next_page.get('href'):
+        # 使用join_url函数确保URL正确拼接
+        next_url = join_url(BASE_URL, next_page.get('href'))
+        urls.append(next_url)
     
     return urls
 
 
 def extract_riddles_from_page(url):
     """
-    从页面中提取谜语数据
+    从页面中提取谜语数据，使用XPath选择器
     """
     content = get_page_content(url)
-    # print(content)  # Debug: print the content to check if it
-
     if not content:
         return []
     
     soup = BeautifulSoup(content, "html.parser")
     riddles = []
     
-    # 查找谜面和谜底
-    # 尝试多种模式匹配谜语
-    text = soup.get_text()
+    # 使用XPath风格的选择器提取谜语列表
+    miyu_list = soup.select('div.list > ul > li')
     
-    # 模式1：标准的谜面谜底格式
-    pattern1 = r"谜面：(.+?)\s+谜底：(.+?)(?:\s+|$)"
-    matches1 = re.findall(pattern1, text, re.DOTALL)
-    # print(matches1)
-    
-    # 模式2：简单的问答格式
-    pattern2 = r"([^\n]+?)\s*（打[一二三四五六七八九十]\w+）\s*([^\n]+?)(?:\s+|$)"
-    matches2 = re.findall(pattern2, text, re.DOTALL)
-    # print(matches2)
-    
-    # 处理模式1的匹配结果
-    for match in matches1:
-        question = match[0].strip()
-        answer = match[1].strip()
+    for miyu in miyu_list:
+        # 提取谜面（问题）
+        question_elem = miyu.select_one('a')
+        if question_elem:
+            question = question_elem.get_text().strip()
+        else:
+            question_elem = miyu.select_one('a > b')
+            if question_elem:
+                question = question_elem.get_text().strip()
+            else:
+                continue
         
-        # 过滤掉小贴士和其他非谜底内容
-        if "小贴士" in answer:
-            answer = answer.split("小贴士")[0].strip()
-        
-        # 确保问题和答案都不为空
-        if question and answer:
-            riddles.append({
-                "question": question,
-                "answer": answer
-            })
-    
-    # 处理模式2的匹配结果
-    for match in matches2:
-        question = match[0].strip()
-        answer = match[1].strip()
-        
-        # 确保问题和答案都不为空
-        if question and answer:
-            # 添加"打一XX"到问题中
-            if "打一" not in question and "（打" in question:
-                parts = question.split("（")
-                if len(parts) > 1:
-                    question = parts[0].strip()
+        # 获取详情页链接
+        info_page = miyu.select_one('a')
+        if info_page and info_page.get('href'):
+            # 访问详情页获取谜底
+            href = info_page.get('href')
+            # 使用join_url函数确保URL正确拼接
+            detail_url = join_url(BASE_URL, href)
+            detail_content = get_page_content(detail_url)
             
-            riddles.append({
-                "question": question,
-                "answer": answer
-            })
+            if detail_content:
+                detail_soup = BeautifulSoup(detail_content, "html.parser")
+                
+                # 提取谜底（答案）
+                answer_elem = detail_soup.select_one('div.md > h3:nth-of-type(2)')
+                if answer_elem:
+                    answer = answer_elem.get_text().replace('谜底：', '').strip()
+                    
+                    # 提取注释（如果有）
+                    annotation_elem = detail_soup.select_one('div.zy > p')
+                    annotation = ''
+                    if annotation_elem:
+                        annotation = annotation_elem.get_text().strip()
+                    
+                    # 确保问题和答案都不为空
+                    if question and answer:
+                        riddle = {
+                            "question": question,
+                            "answer": answer
+                        }
+                        
+                        # 如果有注释，添加到谜语数据中
+                        if annotation:
+                            riddle["annotation"] = annotation
+                            
+                        riddles.append(riddle)
+    
+    # 处理分页
+    next_page = soup.select_one('li.sy3 > a:contains("下一页")')
+    if next_page and next_page.get('href'):
+        # 使用join_url函数确保URL正确拼接
+        next_url = join_url(BASE_URL, next_page.get('href'))
+        # 递归获取下一页的谜语
+        try:
+            next_riddles = extract_riddles_from_page(next_url)
+            riddles.extend(next_riddles)
+        except Exception as e:
+            print(f"获取下一页谜语失败: {next_url}, 错误: {e}")
     
     return riddles
 
@@ -147,7 +191,13 @@ def format_riddle(riddle):
     """
     格式化谜语为指定格式
     """
-    return f"问题：{riddle['question']}\n答案:{riddle['answer']}"
+    formatted = f"问题：{riddle['question']}\n答案:{riddle['answer']}"
+    
+    # 如果有注释，添加到格式化的谜语中
+    if 'annotation' in riddle and riddle['annotation']:
+        formatted += f"\n注释:{riddle['annotation']}"
+    
+    return formatted
 
 
 def save_riddles_to_file(riddles):
@@ -219,38 +269,43 @@ def main():
     """
     主函数
     """
-    print("开始爬取谜语数据...")
+    print("开始爬取儿童谜语数据...")
     
-    # 获取谜语页面URL列表
-    page_urls = get_riddle_page_urls()
-    if not page_urls:
-        print("未找到谜语页面，请检查网站结构是否变化")
-        return
-    
-    print(f"找到 {len(page_urls)} 个谜语页面")
-    
-    # 爬取谜语数据
-    all_riddles = []
-    for i, url in enumerate(page_urls):
-        print(f"正在爬取第 {i+1}/{len(page_urls)} 个页面: {url}")
-        riddles = extract_riddles_from_page(url)
-        all_riddles.extend(riddles)
+    try:
+        # 直接从主页开始爬取
+        print(f"开始从 {ETMY_URL} 爬取谜语数据")
+        all_riddles = extract_riddles_from_page(ETMY_URL)
         
-        # 随机延时，避免请求过于频繁
-        time.sleep(random.uniform(1, 3))
-    
-    print(f"共爬取到 {len(all_riddles)} 条谜语")
-    
-    # 移除重复的谜语
-    unique_riddles = remove_duplicates(all_riddles)
-    print(f"去重后剩余 {len(unique_riddles)} 条谜语")
-    
-    # 保存谜语到文件
-    if unique_riddles:
-        save_riddles_to_file(unique_riddles)
-        print("谜语数据爬取完成！")
-    else:
-        print("没有新的谜语数据需要保存")
+        if not all_riddles:
+            print("未能爬取到任何谜语数据，请检查网络连接或网站结构是否发生变化")
+            return
+        
+        print(f"共爬取到 {len(all_riddles)} 条谜语")
+        
+        # 移除重复的谜语
+        unique_riddles = remove_duplicates(all_riddles)
+        print(f"去重后剩余 {len(unique_riddles)} 条谜语")
+        
+        # 保存谜语到文件
+        if unique_riddles:
+            save_riddles_to_file(unique_riddles)
+            print("儿童谜语数据爬取完成！")
+        else:
+            print("没有新的谜语数据需要保存")
+    except Exception as e:
+        print(f"爬取过程中发生错误: {e}")
+        print("请检查网络连接或网站结构是否发生变化")
+        # 如果有部分数据已爬取，尝试保存
+        if 'all_riddles' in locals() and all_riddles:
+            print(f"尝试保存已爬取的 {len(all_riddles)} 条谜语数据...")
+            try:
+                unique_riddles = remove_duplicates(all_riddles)
+                if unique_riddles:
+                    save_riddles_to_file(unique_riddles)
+                    print(f"成功保存 {len(unique_riddles)} 条谜语数据")
+            except Exception as save_error:
+                print(f"保存数据时发生错误: {save_error}")
+                print("无法保存已爬取的数据")
 
 
 if __name__ == "__main__":
