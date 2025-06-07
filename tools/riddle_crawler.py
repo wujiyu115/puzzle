@@ -18,7 +18,10 @@ from bs4 import BeautifulSoup
 # 配置
 BASE_URL = "http://www.cmiyu.com"
 ETMY_URL = f"{BASE_URL}/etmy/"
-OUTPUT_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "origin_data", "riddle.txt")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+OUTPUT_FILE = os.path.join(PROJECT_ROOT, "origin_data", "riddle.txt")
+VISITED_URLS_FILE = os.path.join(SCRIPT_DIR, "visited_urls.txt")
 
 
 def join_url(base, path):
@@ -101,7 +104,7 @@ def get_riddle_page_urls():
                 urls.append(full_url)
     
     # 查找分页链接
-    next_page = soup.select_one('li.sy3 > a:contains("下一页")')
+    next_page = soup.select_one('li.sy3 > a:-soup-contains("下一页")')
     if next_page and next_page.get('href'):
         # 使用join_url函数确保URL正确拼接
         next_url = join_url(BASE_URL, next_page.get('href'))
@@ -110,13 +113,18 @@ def get_riddle_page_urls():
     return urls
 
 
-def extract_riddles_from_page(url):
+def extract_riddles_from_page(url, visited_urls):
     """
     从页面中提取谜语数据，使用XPath选择器
     """
+    if url in visited_urls:
+        print(f"已访问过: {url}, 跳过")
+        return []
+    
     content = get_page_content(url)
     if not content:
         return []
+    visited_urls.add(url) # 标记为已访问
     
     soup = BeautifulSoup(content, "html.parser")
     riddles = []
@@ -143,7 +151,14 @@ def extract_riddles_from_page(url):
             href = info_page.get('href')
             # 使用join_url函数确保URL正确拼接
             detail_url = join_url(BASE_URL, href)
+            
+            if detail_url in visited_urls:
+                print(f"详情页已访问过: {detail_url}, 跳过")
+                continue # 跳过这个谜语，因为详情页已处理
+            
             detail_content = get_page_content(detail_url)
+            if detail_content:
+                visited_urls.add(detail_url) # 标记详情页为已访问
             
             if detail_content:
                 detail_soup = BeautifulSoup(detail_content, "html.parser")
@@ -173,13 +188,13 @@ def extract_riddles_from_page(url):
                         riddles.append(riddle)
     
     # 处理分页
-    next_page = soup.select_one('li.sy3 > a:contains("下一页")')
+    next_page = soup.select_one('li.sy3 > a:-soup-contains("下一页")')
     if next_page and next_page.get('href'):
         # 使用join_url函数确保URL正确拼接
         next_url = join_url(BASE_URL, next_page.get('href'))
         # 递归获取下一页的谜语
         try:
-            next_riddles = extract_riddles_from_page(next_url)
+            next_riddles = extract_riddles_from_page(next_url, visited_urls)
             riddles.extend(next_riddles)
         except Exception as e:
             print(f"获取下一页谜语失败: {next_url}, 错误: {e}")
@@ -271,10 +286,17 @@ def main():
     """
     print("开始爬取儿童谜语数据...")
     
+    visited_urls = set()
+    # 加载已访问的URL
+    if os.path.exists(VISITED_URLS_FILE):
+        with open(VISITED_URLS_FILE, "r", encoding="utf-8") as f:
+            visited_urls = set(line.strip() for line in f)
+        print(f"从 {VISITED_URLS_FILE} 加载了 {len(visited_urls)} 个已访问的URL")
+
     try:
         # 直接从主页开始爬取
         print(f"开始从 {ETMY_URL} 爬取谜语数据")
-        all_riddles = extract_riddles_from_page(ETMY_URL)
+        all_riddles = extract_riddles_from_page(ETMY_URL, visited_urls)
         
         if not all_riddles:
             print("未能爬取到任何谜语数据，请检查网络连接或网站结构是否发生变化")
@@ -295,6 +317,13 @@ def main():
     except Exception as e:
         print(f"爬取过程中发生错误: {e}")
         print("请检查网络连接或网站结构是否发生变化")
+    finally:
+        # 保存已访问的URL
+        with open(VISITED_URLS_FILE, "w", encoding="utf-8") as f:
+            for url in visited_urls:
+                f.write(url + "\n")
+        print(f"已将 {len(visited_urls)} 个已访问的URL保存到 {VISITED_URLS_FILE}")
+        
         # 如果有部分数据已爬取，尝试保存
         if 'all_riddles' in locals() and all_riddles:
             print(f"尝试保存已爬取的 {len(all_riddles)} 条谜语数据...")
