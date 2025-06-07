@@ -82,38 +82,9 @@ def get_page_content(url):
         print(f"请求异常: {e}")
         return None
 
-
-def get_riddle_page_urls():
-    """
-    获取儿童谜语页面的URL列表
-    """
-    content = get_page_content(ETMY_URL)
-    if not content:
-        return []
-    
-    soup = BeautifulSoup(content, "html.parser")
-    urls = []
-    
-    # 查找所有可能的谜语页面链接
-    for link in soup.find_all("a"):
-        href = link.get("href")
-        if href and "/etmy/" in href and href != ETMY_URL:
-            # 使用join_url函数确保URL正确拼接
-            full_url = join_url(BASE_URL, href)
-            if full_url != ETMY_URL:
-                urls.append(full_url)
-    
-    # 查找分页链接
-    next_page = soup.select_one('li.sy3 > a:-soup-contains("下一页")')
-    if next_page and next_page.get('href'):
-        # 使用join_url函数确保URL正确拼接
-        next_url = join_url(BASE_URL, next_page.get('href'))
-        urls.append(next_url)
-    
-    return urls
-
-
+count = 2
 def extract_riddles_from_page(url, visited_urls):
+    global count
     """
     从页面中提取谜语数据，使用XPath选择器
     """
@@ -188,16 +159,15 @@ def extract_riddles_from_page(url, visited_urls):
                         riddles.append(riddle)
     
     # 处理分页
-    next_page = soup.select_one('li.sy3 > a:-soup-contains("下一页")')
-    if next_page and next_page.get('href'):
-        # 使用join_url函数确保URL正确拼接
-        next_url = join_url(BASE_URL, next_page.get('href'))
-        # 递归获取下一页的谜语
-        try:
-            next_riddles = extract_riddles_from_page(next_url, visited_urls)
-            riddles.extend(next_riddles)
-        except Exception as e:
-            print(f"获取下一页谜语失败: {next_url}, 错误: {e}")
+    # 使用join_url函数确保URL正确拼接
+    next_url = join_url(ETMY_URL, "/mytid%7D{0}.html".format(count))
+    # 递归获取下一页的谜语
+    try:
+        count = count + 1
+        next_riddles = extract_riddles_from_page(next_url, visited_urls)
+        riddles.extend(next_riddles)
+    except Exception as e:
+        print(f"获取下一页谜语失败: {next_url}, 错误: {e}")
     
     return riddles
 
