@@ -1,7 +1,7 @@
 """
 API路由模块
 """
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from app import db
 from app.models import DataEntry
 from app.utils.auth import require_api_key
@@ -18,34 +18,48 @@ api_bp = Blueprint('api', __name__)
 def get_random_entries(count):
     """获取随机条目"""
     category = request.args.get('category')
+    source = request.args.get('source')
 
     query = DataEntry.query
     if category:
         query = query.filter_by(category=category)
 
-    # 获取匹配条目的总数
     total_entries = query.count()
+    if total_entries == 0:
+        return jsonify([])
 
-    # 如果请求的数量超过可用数量，返回所有可用的
     if count > total_entries:
         count = total_entries
 
-    # 获取随机条目
-    if total_entries > 0:
-        # SQLite特定的随机排序
-        random_entries = query.order_by(db.func.random()).limit(count).all()
+    # 基于 source 参数做 session 级去重
+    seen_ids = []
+    seen_key = None
+    if source:
+        seen_key = f'seen_{source}'
+        seen_ids = session.get(seen_key, [])
+        if seen_ids:
+            filtered_query = query.filter(~DataEntry.id.in_(seen_ids))
+            available = filtered_query.count()
+            if available >= count:
+                query = filtered_query
+            else:
+                seen_ids = []
 
-        result = [{
-            'id': entry.id,
-            'question': entry.question,
-            'answer': entry.answer,
-            'category': entry.category,
-            'created_at': entry.created_at.isoformat()
-        } for entry in random_entries]
+    random_entries = query.order_by(db.func.random()).limit(count).all()
 
-        return jsonify(result)
-    else:
-        return jsonify([])
+    if seen_key is not None:
+        seen_ids.extend([entry.id for entry in random_entries])
+        session[seen_key] = seen_ids
+
+    result = [{
+        'id': entry.id,
+        'question': entry.question,
+        'answer': entry.answer,
+        'category': entry.category,
+        'created_at': entry.created_at.isoformat()
+    } for entry in random_entries]
+
+    return jsonify(result)
 
 @api_bp.route('/add', methods=['POST'])
 @require_api_key
