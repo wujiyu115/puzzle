@@ -131,6 +131,7 @@ def detect_pagination_pattern(section_path):
     pages = soup.select("div.pages li")
     prefix = None
     max_page = 1
+    last_page_href = None
     for p in pages:
         a = p.select_one("a")
         if not a or not a.get("href"):
@@ -138,22 +139,27 @@ def detect_pagination_pattern(section_path):
         href = a.get("href")
         text = p.get_text().strip()
         if text == "末页":
-            m = re.search(r'(\d+)\.html', href)
-            if m:
-                max_page = int(m.group(1))
+            last_page_href = href
         if text == "2" and prefix is None:
             m = re.match(r'(.+?)2\.html$', href)
             if m:
                 prefix = m.group(1)
+    if prefix and last_page_href:
+        page_str = last_page_href.replace(prefix, "", 1).replace(".html", "")
+        if page_str.isdigit():
+            max_page = int(page_str)
     return prefix, max_page
 
 
 def crawl_listing_page(url):
     html = fetch_page(url)
     if not html:
+        print(f"    [DEBUG] fetch_page returned None for {url}")
         return []
     soup = BeautifulSoup(html, "html.parser")
     items = soup.select("div.list > ul > li")
+    if not items:
+        print(f"    [DEBUG] No items found, html length={len(html)}, url={url}")
     results = []
     for item in items:
         a = item.select_one("a")
@@ -169,17 +175,21 @@ def crawl_listing_page(url):
     return results
 
 
+def is_word_puzzle(question):
+    return "打一字" in question
+
+
 def clean_question(question, category):
-    """清理问题文本"""
     q = question.strip()
     if category == "word_puzzle":
-        q = re.sub(r'\s*（打一字）\s*$', '', q)
-        q = re.sub(r'\s*\(打一字\)\s*$', '', q)
+        q = re.sub(r'\s*[（(]打一字[）)]\s*$', '', q)
+        q = re.sub(r'\s*（打一字）\s*', '', q)
+        q = re.sub(r'\s*\(打一字\)\s*', '', q)
     q = re.sub(r'^(问[：:])\s*', '', q)
     return q.strip()
 
 
-def crawl_section(section_path, category, db_path, existing_hashes):
+def crawl_section(section_path, category, db_path, existing_hashes, filter_word_puzzle=False):
     current_count = get_count(db_path, category)
     if current_count >= TARGET:
         print(f"[{category}] 已达到 {current_count} 条，跳过")
@@ -194,6 +204,7 @@ def crawl_section(section_path, category, db_path, existing_hashes):
         prefix = "my17"
 
     print(f"  分页前缀: {prefix}, 最大页数: {max_page}")
+    time.sleep(random.uniform(1, 2))
 
     total_added = 0
     consecutive_empty = 0
@@ -212,15 +223,19 @@ def crawl_section(section_path, category, db_path, existing_hashes):
         items = crawl_listing_page(page_url)
         if not items:
             consecutive_empty += 1
-            if consecutive_empty >= 5:
+            if consecutive_empty >= 20:
                 print(f"  连续 {consecutive_empty} 页为空，停止此分类")
                 break
+            time.sleep(random.uniform(1, 2))
             continue
 
         consecutive_empty = 0
         page_entries = []
 
         for question, detail_url in items:
+            if filter_word_puzzle and not is_word_puzzle(question):
+                continue
+
             q_clean = clean_question(question, category)
             if not q_clean:
                 continue
@@ -259,19 +274,19 @@ def main():
     all_hashes = get_all_hashes(DB_PATH)
     print(f"已有 {len(all_hashes)} 个唯一条目")
 
-    # 爬取知识问答 (trivia)
-    t_count = get_count(DB_PATH, "trivia")
-    if t_count < TARGET:
-        crawl_section("/zlmy/", "trivia", DB_PATH, all_hashes)
-    else:
-        print(f"[trivia] 已有 {t_count} 条，已达标")
-
-    # 爬取字谜 (word_puzzle)
-    w_count = get_count(DB_PATH, "word_puzzle")
-    if w_count < TARGET:
-        crawl_section("/zmmy/", "word_puzzle", DB_PATH, all_hashes)
-    else:
-        print(f"[word_puzzle] 已有 {w_count} 条，已达标")
+    # 爬取字谜 (word_puzzle) - 从多个分区爬取
+    word_puzzle_sections = [
+        ("/zmmy/", "字谜", False),
+        ("/qita/", "趣味谜语", True),
+        ("/dmmy/", "灯谜", True),
+    ]
+    for section_path, section_name, need_filter in word_puzzle_sections:
+        w_count = get_count(DB_PATH, "word_puzzle")
+        if w_count >= TARGET:
+            print(f"[word_puzzle] 已有 {w_count} 条，已达标")
+            break
+        print(f"\n--- 从 {section_name} ({section_path}) 补充字谜 ---")
+        crawl_section(section_path, "word_puzzle", DB_PATH, all_hashes, filter_word_puzzle=need_filter)
 
     # 最终统计
     print("\n=== 最终统计 ===")
