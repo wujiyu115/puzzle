@@ -90,11 +90,8 @@ def create_app():
     from app.routes.main import main_bp
     from app.routes.api import api_bp
     from app.routes.admin import admin_bp
-    from app.routes.llm import llm_bp
-    
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(admin_bp)
-    app.register_blueprint(llm_bp, url_prefix='/api/llm')
     
     return app
