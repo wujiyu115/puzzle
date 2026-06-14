@@ -21,9 +21,25 @@
             <a href="/browse?category=idiom" class="btn btn-secondary {% if category == 'idiom' %}opacity-50{% endif %}">成语</a>
             <a href="/browse?category=brain_teaser" class="btn btn-secondary {% if category == 'brain_teaser' %}opacity-50{% endif %}">脑筋急转弯</a>
             <a href="/browse?category=trivia" class="btn btn-secondary {% if category == 'trivia' %}opacity-50{% endif %}">知识问答</a>
-            <a href="/browse?category=idiom_chain" class="btn btn-secondary {% if category == 'idiom_chain' %}opacity-50{% endif %}">成语接龙</a>
             <a href="/browse?category=word_puzzle" class="btn btn-secondary {% if category == 'word_puzzle' %}opacity-50{% endif %}">字谜</a>
         </div>
+    </div>
+
+    <div class="mb-6">
+        <form method="GET" action="/browse" class="flex gap-2">
+            {% if category %}
+                <input type="hidden" name="category" value="{{ category }}">
+            {% endif %}
+            <input type="text" name="q" value="{{ q or '' }}" placeholder="搜索问题或答案..."
+                   class="input flex-1">
+            <button type="submit" class="btn btn-primary">搜索</button>
+            {% if q %}
+                <a href="/browse{% if category %}?category={{ category }}{% endif %}" class="btn btn-secondary">清除</a>
+            {% endif %}
+        </form>
+        {% if q %}
+            <p class="text-sm text-gray-500 mt-2">搜索: "{{ q }}" — 共 {{ pagination.total }} 条结果</p>
+        {% endif %}
     </div>
 
     {% if entries %}
@@ -46,8 +62,6 @@
                                         bg-orange-100 text-orange-800
                                     {% elif entry.category == 'trivia' %}
                                         bg-teal-100 text-teal-800
-                                    {% elif entry.category == 'idiom_chain' %}
-                                        bg-pink-100 text-pink-800
                                     {% elif entry.category == 'word_puzzle' %}
                                         bg-yellow-100 text-yellow-800
                                     {% else %}
@@ -77,7 +91,7 @@
         <div class="flex justify-center">
             <div class="flex space-x-1">
                 {% if pagination.has_prev %}
-                    <a href="{{ url_for('main.browse', page=pagination.prev_num, category=category) }}" class="btn btn-secondary">&laquo; 上一页</a>
+                    <a href="{{ url_for('main.browse', page=pagination.prev_num, category=category, q=q) }}" class="btn btn-secondary">&laquo; 上一页</a>
                 {% else %}
                     <span class="btn btn-secondary opacity-50">&laquo; 上一页</span>
                 {% endif %}
@@ -87,7 +101,7 @@
                         {% if page_num == pagination.page %}
                             <span class="btn btn-primary">{{ page_num }}</span>
                         {% else %}
-                            <a href="{{ url_for('main.browse', page=page_num, category=category) }}" class="btn btn-secondary">{{ page_num }}</a>
+                            <a href="{{ url_for('main.browse', page=page_num, category=category, q=q) }}" class="btn btn-secondary">{{ page_num }}</a>
                         {% endif %}
                     {% else %}
                         <span class="btn btn-secondary opacity-50">...</span>
@@ -95,7 +109,7 @@
                 {% endfor %}
 
                 {% if pagination.has_next %}
-                    <a href="{{ url_for('main.browse', page=pagination.next_num, category=category) }}" class="btn btn-secondary">下一页 &raquo;</a>
+                    <a href="{{ url_for('main.browse', page=pagination.next_num, category=category, q=q) }}" class="btn btn-secondary">下一页 &raquo;</a>
                 {% else %}
                     <span class="btn btn-secondary opacity-50">下一页 &raquo;</span>
                 {% endif %}

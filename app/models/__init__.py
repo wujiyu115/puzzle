@@ -3,3 +3,4 @@
 """
 from app.models.data_entry import DataEntry
 from app.models.api_key import ApiKey
+from app.models.sync_state import SyncState

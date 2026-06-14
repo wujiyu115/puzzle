@@ -15,7 +15,7 @@
     <div class="text-center mb-12">
         <h1 class="text-4xl font-bold mb-4">欢迎来到谜题收藏</h1>
         <p class="text-xl text-gray-600 dark:text-gray-400">
-            为您的娱乐收集的谜语、笑话、成语、脑筋急转弯、知识问答、成语接龙和字谜
+            为您的娱乐收集的谜语、笑话、成语、脑筋急转弯、知识问答和字谜
         </p>
     </div>
 
@@ -61,14 +61,6 @@
         </div>
 
         <div class="card p-6 text-center">
-            <h2 class="text-2xl font-semibold mb-4">成语接龙</h2>
-            <p class="text-gray-600 dark:text-gray-400 mb-6">
-                用上一个成语的最后一个字接下一个成语
-            </p>
-            <a href="/browse?category=idiom_chain" class="btn btn-primary">浏览成语接龙</a>
-        </div>
-
-        <div class="card p-6 text-center">
             <h2 class="text-2xl font-semibold mb-4">字谜</h2>
             <p class="text-gray-600 dark:text-gray-400 mb-6">
                 猜汉字谜语，感受文字的奥妙
@@ -86,7 +78,6 @@
             <button class="btn btn-secondary" onclick="loadRandom('idiom')">成语</button>
             <button class="btn btn-secondary" onclick="loadRandom('brain_teaser')">脑筋急转弯</button>
             <button class="btn btn-secondary" onclick="loadRandom('trivia')">知识问答</button>
-            <button class="btn btn-secondary" onclick="loadRandom('idiom_chain')">成语接龙</button>
             <button class="btn btn-secondary" onclick="loadRandom('word_puzzle')">字谜</button>
         </div>
         <div id="random-entries" class="space-y-4">
@@ -177,8 +168,6 @@
                 return 'inline-block px-2 py-1 text-xs font-semibold rounded bg-orange-100 text-orange-800';
             case 'trivia':
                 return 'inline-block px-2 py-1 text-xs font-semibold rounded bg-teal-100 text-teal-800';
-            case 'idiom_chain':
-                return 'inline-block px-2 py-1 text-xs font-semibold rounded bg-pink-100 text-pink-800';
             case 'word_puzzle':
                 return 'inline-block px-2 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-800';
             default:

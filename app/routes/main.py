@@ -2,6 +2,7 @@
 主要路由模块
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash
+from sqlalchemy import or_
 from app import db
 from app.models import DataEntry
 from app.utils.auth import local_access_only
@@ -24,17 +25,23 @@ def index():
 def browse():
     """浏览数据条目"""
     category = request.args.get('category')
+    q = request.args.get('q', '').strip()
     page = request.args.get('page', 1, type=int)
     per_page = 20
 
     query = DataEntry.query
     if category:
         query = query.filter_by(category=category)
+    if q:
+        query = query.filter(or_(
+            DataEntry.question.like(f'%{q}%'),
+            DataEntry.answer.like(f'%{q}%')
+        ))
 
     pagination = query.order_by(DataEntry.created_at.desc()).paginate(page=page, per_page=per_page)
     entries = pagination.items
 
-    return render_template('browse.html', entries=entries, pagination=pagination, category=category)
+    return render_template('browse.html', entries=entries, pagination=pagination, category=category, q=q)
 
 @main_bp.route('/add', methods=['GET', 'POST'])
 @local_access_only
@@ -55,7 +62,7 @@ def process_batch_entries(request):
         flash('批量条目不能为空', 'error')
         return redirect(url_for('main.add_form'))
 
-    if category not in ['riddle', 'joke', 'idiom', 'brain_teaser', 'trivia', 'idiom_chain', 'word_puzzle']:
+    if category not in ['riddle', 'joke', 'idiom', 'brain_teaser', 'trivia', 'word_puzzle']:
         flash('无效的类别', 'error')
         return redirect(url_for('main.add_form'))
 

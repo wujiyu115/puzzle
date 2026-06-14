@@ -1,131 +1,136 @@
 """
-数据库初始化脚本
+数据库初始化脚本（增量同步）
 """
 import os
 import re
+from datetime import datetime
 from app import create_app, db
-from app.models import DataEntry
+from app.models import DataEntry, SyncState
 from app.utils.logger import get_logger, log_exception
 
-# 获取当前模块的日志记录器
 logger = get_logger()
 
-# 数据文件目录
 DATA_DIR = "origin_data"
 
-# 类别映射（文件名到类别的映射）
 CATEGORY_MAPPING = {
     "riddle.txt": "riddle",
     "joke.txt": "joke",
     "idiom.txt": "idiom",
     "brain_teaser.txt": "brain_teaser",
     "trivia.txt": "trivia",
-    "idiom_chain.txt": "idiom_chain",
     "word_puzzle.txt": "word_puzzle"
 }
 
-def load_data_from_files():
-    """从文件中加载数据"""
-    data = []
+ENTRY_PATTERN = re.compile(r'问题：(.*?)[\r\n]+答案:(.*)', re.DOTALL)
 
-    # 检查数据目录是否存在
-    if not os.path.exists(DATA_DIR):
-        logger.warning(f"数据目录 {DATA_DIR} 不存在")
-        return data
 
-    # 遍历数据目录中的所有文件
-    for filename in os.listdir(DATA_DIR):
-        if filename in CATEGORY_MAPPING:
-            category = CATEGORY_MAPPING[filename]
-            file_path = os.path.join(DATA_DIR, filename)
+def parse_entries(text, category):
+    entries = []
+    for chunk in text.split('---'):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        match = ENTRY_PATTERN.search(chunk)
+        if match:
+            question = match.group(1).strip()
+            answer = match.group(2).strip()
+            if question and answer:
+                entries.append({"question": question, "answer": answer, "category": category})
+    return entries
 
-            try:
-                # 读取文件内容
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
 
-                # 分割条目
-                entries = content.split('---')
+def sync_file(filename, category, existing_hashes):
+    file_path = os.path.join(DATA_DIR, filename)
+    if not os.path.exists(file_path):
+        return 0
 
-                for entry in entries:
-                    entry = entry.strip()
-                    if not entry:
-                        continue
+    file_size = os.path.getsize(file_path)
 
-                    # 解析问题和答案
-                    match = re.search(r'问题：(.*?)[\r\n]+答案:(.*)', entry, re.DOTALL)
-                    if match:
-                        question = match.group(1).strip()
-                        answer = match.group(2).strip()
+    state = SyncState.query.filter_by(filename=filename).first()
+    last_size = state.file_size if state else 0
 
-                        if question and answer:
-                            data.append({
-                                "question": question,
-                                "answer": answer,
-                                "category": category
-                            })
-                    else:
-                        logger.warning(f"无法解析条目: {entry[:50]}...")
+    if file_size == last_size:
+        logger.info(f"  {filename}: 无变化，跳过")
+        return 0
 
-                logger.info(f"从 {filename} 加载了 {len(entries)} 个条目")
-            except Exception as e:
-                logger.error(f"加载文件 {filename} 时出错: {str(e)}")
+    if file_size < last_size:
+        last_size = 0
+        logger.info(f"  {filename}: 文件变小，全量重扫")
 
-    logger.info(f"总共加载了 {len(data)} 个条目")
-    return data
+    with open(file_path, 'r', encoding='utf-8') as f:
+        if last_size > 0:
+            f.seek(last_size)
+            tail = f.read()
+            if tail and not tail.startswith('---') and not tail.startswith('\n---'):
+                f.seek(0)
+                tail = f.read()
+                last_size = 0
+                logger.info(f"  {filename}: seek 位置不在条目边界，全量重扫")
+            else:
+                logger.info(f"  {filename}: 增量读取 {file_size - last_size} 字节")
+        else:
+            tail = f.read()
+            logger.info(f"  {filename}: 全量读取 {file_size} 字节")
+
+    entries = parse_entries(tail, category)
+    added = 0
+    for item in entries:
+        content_hash = DataEntry.generate_hash(item["question"], item["answer"])
+        if content_hash in existing_hashes:
+            continue
+        db.session.add(DataEntry(
+            question=item["question"],
+            answer=item["answer"],
+            category=item["category"],
+            content_hash=content_hash
+        ))
+        existing_hashes.add(content_hash)
+        added += 1
+
+    if state:
+        state.file_size = file_size
+        state.synced_at = datetime.utcnow()
+    else:
+        db.session.add(SyncState(filename=filename, file_size=file_size))
+
+    return added
+
 
 def init_db():
-    """初始化数据库"""
     try:
         app = create_app()
         with app.app_context():
-            # 创建表（如果不存在）
             db.create_all()
-            logger.info("数据库表已创建或已存在")
 
-            # 检查数据库是否为空
             try:
                 entry_count = DataEntry.query.count()
-                if entry_count == 0:
-                    logger.info("正在从文件加载数据初始化数据库...")
+                logger.info(f"数据库已有 {entry_count} 个条目，开始增量同步...")
 
-                    # 从文件加载数据
-                    data = load_data_from_files()
+                if not os.path.exists(DATA_DIR):
+                    logger.warning(f"数据目录 {DATA_DIR} 不存在")
+                    return
 
-                    if not data:
-                        logger.warning("没有找到数据文件或数据文件为空")
-                        return
+                existing_hashes = {row[0] for row in db.session.query(DataEntry.content_hash).all()}
 
-                    # 添加数据
-                    added_count = 0
-                    for item in data:
-                        # 为问题和答案生成哈希
-                        content_hash = DataEntry.generate_hash(item["question"], item["answer"])
+                total_added = 0
+                for filename, category in CATEGORY_MAPPING.items():
+                    added = sync_file(filename, category, existing_hashes)
+                    if added > 0:
+                        logger.info(f"  {filename}: 新增 {added} 条")
+                    total_added += added
 
-                        # 检查条目是否已存在
-                        existing = DataEntry.query.filter_by(content_hash=content_hash).first()
-                        if not existing:
-                            entry = DataEntry(
-                                question=item["question"],
-                                answer=item["answer"],
-                                category=item["category"],
-                                content_hash=content_hash
-                            )
-                            db.session.add(entry)
-                            added_count += 1
+                db.session.commit()
 
-                    db.session.commit()
-                    logger.info(f"已添加 {added_count} 个条目")
+                if total_added > 0:
+                    logger.info(f"同步完成：新增 {total_added} 条，当前共 {entry_count + total_added} 条")
                 else:
-                    logger.info(f"数据库已包含 {entry_count} 个条目，跳过初始化。")
+                    logger.info("同步完成：无新增条目")
             except Exception:
-                # 记录异常信息，包括完整的堆栈跟踪
-                log_exception(logger, "检查或添加数据时出错")
+                log_exception(logger, "同步数据时出错")
                 db.session.rollback()
     except Exception:
-        # 记录异常信息，包括完整的堆栈跟踪
         logger.error("初始化数据库时出错")
-        # log_exception(logger, "初始化数据库时出错")
+
 
 if __name__ == "__main__":
     init_db()
