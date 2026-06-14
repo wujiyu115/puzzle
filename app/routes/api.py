@@ -2,6 +2,7 @@
 API路由模块
 """
 from flask import Blueprint, request, jsonify, session
+from sqlalchemy import or_, func
 from app import db
 from app.models import DataEntry
 from app.utils.auth import require_api_key
@@ -183,3 +184,62 @@ def add_multiple_entries(entries):
 
     # 返回结果
     return jsonify(results), 201
+
+
+@api_bp.route('/entries', methods=['GET'])
+@require_api_key
+def list_entries():
+    """分页查询条目，支持搜索和分类筛选"""
+    category = request.args.get('category')
+    q = request.args.get('q', '').strip()
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+
+    per_page = min(max(per_page, 1), 100)
+
+    query = DataEntry.query
+    if category:
+        query = query.filter_by(category=category)
+    if q:
+        query = query.filter(or_(
+            DataEntry.question.like(f'%{q}%'),
+            DataEntry.answer.like(f'%{q}%')
+        ))
+
+    pagination = query.order_by(DataEntry.created_at.desc()).paginate(
+        page=page, per_page=per_page
+    )
+
+    return jsonify({
+        'items': [{
+            'id': entry.id,
+            'question': entry.question,
+            'answer': entry.answer,
+            'category': entry.category,
+            'created_at': entry.created_at.isoformat()
+        } for entry in pagination.items],
+        'total': pagination.total,
+        'page': pagination.page,
+        'per_page': pagination.per_page,
+        'pages': pagination.pages,
+        'has_next': pagination.has_next,
+        'has_prev': pagination.has_prev
+    })
+
+
+@api_bp.route('/categories', methods=['GET'])
+@require_api_key
+def list_categories():
+    """获取所有分类及条目数量"""
+    counts = db.session.query(
+        DataEntry.category,
+        func.count(DataEntry.id)
+    ).group_by(DataEntry.category).all()
+
+    return jsonify({
+        'categories': [
+            {'name': cat, 'count': count}
+            for cat, count in counts
+        ],
+        'total': sum(count for _, count in counts)
+    })

@@ -1,5 +1,14 @@
 #!/bin/bash
 
+cleanup() {
+    echo ""
+    echo "Stopping dev server..."
+    kill -- -$$ 2>/dev/null
+    exit 0
+}
+
+trap cleanup SIGINT SIGTERM
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
