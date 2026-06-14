@@ -55,7 +55,7 @@ def process_batch_entries(request):
         flash('批量条目不能为空', 'error')
         return redirect(url_for('main.add_form'))
 
-    if category not in ['riddle', 'joke', 'idiom', 'brain_teaser']:
+    if category not in ['riddle', 'joke', 'idiom', 'brain_teaser', 'trivia', 'idiom_chain', 'word_puzzle']:
         flash('无效的类别', 'error')
         return redirect(url_for('main.add_form'))
 
@@ -63,10 +63,10 @@ def process_batch_entries(request):
     entries = []
 
     # 根据类别确定分隔符
-    if category == 'riddle' or category == 'joke' or category == 'brain_teaser':
-        separator = '答案：'
-    else:  # idiom
+    if category == 'idiom':
         separator = '含义：'
+    else:
+        separator = '答案：'
 
     # 分割多个条目
     items = batch_entries.split('---')

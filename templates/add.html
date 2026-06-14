@@ -16,6 +16,9 @@
                     <option value="joke">笑话</option>
                     <option value="idiom">成语</option>
                     <option value="brain_teaser">脑筋急转弯</option>
+                    <option value="trivia">知识问答</option>
+                    <option value="idiom_chain">成语接龙</option>
+                    <option value="word_puzzle">字谜</option>
                 </select>
             </div>
 
@@ -51,6 +54,9 @@
                 <option value="joke">笑话</option>
                 <option value="idiom">成语</option>
                 <option value="brain_teaser">脑筋急转弯</option>
+                <option value="trivia">知识问答</option>
+                <option value="idiom_chain">成语接龙</option>
+                <option value="word_puzzle">字谜</option>
             </select>
         </div>
 
@@ -137,6 +143,31 @@
 4. 不要有编号
 5. 直接给出脑筋急转弯内容，不要有多余的解释`;
                 break;
+            case 'trivia':
+                prompt = `请生成${count}个适合儿童的知识问答，每个问答包含问题和答案。格式要求：
+1. 每个问答必须包含问题和答案
+2. 问题和答案之间用"答案："分隔
+3. 每个问答之间用"---"分隔
+4. 不要有编号
+5. 答案要简短（一两句话）
+6. 直接给出问答内容，不要有多余的解释`;
+                break;
+            case 'idiom_chain':
+                prompt = `请生成${count}组成语接龙，每组包含一个成语和能接上的下一个成语（用前一个成语的最后一个字作为下一个成语的第一个字）。格式要求：
+1. 每组必须包含问题（当前成语）和答案（能接上的成语）
+2. 问题和答案之间用"答案："分隔
+3. 每组之间用"---"分隔
+4. 不要有编号
+5. 直接给出内容，不要有多余的解释`;
+                break;
+            case 'word_puzzle':
+                prompt = `请生成${count}个有趣的字谜，每个字谜包含谜面和谜底（一个汉字）。格式要求：
+1. 每个字谜必须包含谜面和谜底
+2. 谜面和谜底之间用"答案："分隔
+3. 每个字谜之间用"---"分隔
+4. 不要有编号
+5. 直接给出字谜内容，不要有多余的解释`;
+                break;
         }
 
         // 调用LLM API
@@ -174,8 +205,8 @@
                 let question = '';
                 let answer = '';
 
-                if (category === 'riddle' || category === 'joke' || category === 'brain_teaser') {
-                    const parts = item.split('答案：');
+                if (category === 'idiom') {
+                    const parts = item.split('含义：');
                     if (parts.length > 1) {
                         question = parts[0].trim();
                         answer = parts[1].trim();
@@ -183,8 +214,8 @@
                         question = item;
                         answer = '';
                     }
-                } else if (category === 'idiom') {
-                    const parts = item.split('含义：');
+                } else {
+                    const parts = item.split('答案：');
                     if (parts.length > 1) {
                         question = parts[0].trim();
                         answer = parts[1].trim();
@@ -318,10 +349,10 @@
                             batchText += '\n---\n';
                         }
 
-                        if (category === 'riddle' || category === 'joke' || category === 'brain_teaser') {
-                            batchText += question + '\n答案：' + answer;
-                        } else { // idiom
+                        if (category === 'idiom') {
                             batchText += question + '\n含义：' + answer;
+                        } else {
+                            batchText += question + '\n答案：' + answer;
                         }
                     });
 

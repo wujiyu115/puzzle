@@ -107,7 +107,7 @@ def add_multiple_entries(entries):
             continue
 
         # 验证类别
-        if category not in ['riddle', 'joke', 'idiom', 'brain_teaser']:
+        if category not in ['riddle', 'joke', 'idiom', 'brain_teaser', 'trivia', 'idiom_chain', 'word_puzzle']:
             results['failed'].append({
                 'entry': entry,
                 'reason': 'Invalid category. Must be one of: riddle, joke, idiom, brain_teaser'

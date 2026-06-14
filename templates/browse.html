@@ -20,6 +20,9 @@
             <a href="/browse?category=joke" class="btn btn-secondary {% if category == 'joke' %}opacity-50{% endif %}">笑话</a>
             <a href="/browse?category=idiom" class="btn btn-secondary {% if category == 'idiom' %}opacity-50{% endif %}">成语</a>
             <a href="/browse?category=brain_teaser" class="btn btn-secondary {% if category == 'brain_teaser' %}opacity-50{% endif %}">脑筋急转弯</a>
+            <a href="/browse?category=trivia" class="btn btn-secondary {% if category == 'trivia' %}opacity-50{% endif %}">知识问答</a>
+            <a href="/browse?category=idiom_chain" class="btn btn-secondary {% if category == 'idiom_chain' %}opacity-50{% endif %}">成语接龙</a>
+            <a href="/browse?category=word_puzzle" class="btn btn-secondary {% if category == 'word_puzzle' %}opacity-50{% endif %}">字谜</a>
         </div>
     </div>
 
@@ -41,6 +44,12 @@
                                         bg-purple-100 text-purple-800
                                     {% elif entry.category == 'brain_teaser' %}
                                         bg-orange-100 text-orange-800
+                                    {% elif entry.category == 'trivia' %}
+                                        bg-teal-100 text-teal-800
+                                    {% elif entry.category == 'idiom_chain' %}
+                                        bg-pink-100 text-pink-800
+                                    {% elif entry.category == 'word_puzzle' %}
+                                        bg-yellow-100 text-yellow-800
                                     {% else %}
                                         bg-gray-100 text-gray-800
                                     {% endif %}

@@ -18,7 +18,10 @@ CATEGORY_MAPPING = {
     "riddle.txt": "riddle",
     "joke.txt": "joke",
     "idiom.txt": "idiom",
-    "brain_teaser.txt": "brain_teaser"
+    "brain_teaser.txt": "brain_teaser",
+    "trivia.txt": "trivia",
+    "idiom_chain.txt": "idiom_chain",
+    "word_puzzle.txt": "word_puzzle"
 }
 
 def load_data_from_files():
