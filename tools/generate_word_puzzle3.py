@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-第三批补充字谜数据。
+第三批补充字谜数据，写入 origin_data/word_puzzle.txt。
 """
 
 import hashlib
 import os
-import sqlite3
 import sys
 import random
 
@@ -14,7 +13,7 @@ sys.stdout.reconfigure(line_buffering=True)
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-DB_PATH = os.path.join(PROJECT_ROOT, "data", "puzzle_data.db")
+OUTPUT_PATH = os.path.join(PROJECT_ROOT, "origin_data", "word_puzzle.txt")
 CATEGORY = "word_puzzle"
 TARGET = 10000
 
@@ -23,44 +22,41 @@ def generate_hash(question, answer):
     return hashlib.md5(f"{question}|{answer}".encode()).hexdigest()
 
 
-def get_all_hashes(db_path):
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute("SELECT content_hash FROM data_entries")
-    hashes = {row[0] for row in cur.fetchall()}
-    conn.close()
-    return hashes
+def sanitize(text):
+    return text.replace("---", "——").replace("--", "——").strip()
 
 
-def get_count(db_path, category):
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM data_entries WHERE category=?", (category,))
-    count = cur.fetchone()[0]
-    conn.close()
-    return count
-
-
-def insert_batch(db_path, entries, category, existing_hashes):
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    added = 0
-    for q, a in entries:
-        h = generate_hash(q, a)
-        if h in existing_hashes:
+def load_existing():
+    hashes = set()
+    count = 0
+    if not os.path.exists(OUTPUT_PATH):
+        return hashes, count
+    with open(OUTPUT_PATH, "r", encoding="utf-8") as f:
+        content = f.read()
+    for chunk in content.split("---"):
+        chunk = chunk.strip()
+        if not chunk:
             continue
-        try:
-            cur.execute(
-                "INSERT INTO data_entries (question, answer, category, content_hash, created_at) "
-                "VALUES (?, ?, ?, ?, datetime('now'))",
-                (q, a, category, h)
-            )
+        lines = chunk.split("\n", 1)
+        q = lines[0].replace("问题：", "").strip() if lines else ""
+        a = lines[1].replace("答案:", "").strip() if len(lines) > 1 else ""
+        if q and a:
+            hashes.add(generate_hash(q, a))
+            count += 1
+    return hashes, count
+
+
+def append_entries(entries, existing_hashes):
+    added = 0
+    with open(OUTPUT_PATH, "a", encoding="utf-8") as f:
+        for q, a in entries:
+            q, a = sanitize(q), sanitize(a)
+            h = generate_hash(q, a)
+            if h in existing_hashes:
+                continue
             existing_hashes.add(h)
+            f.write(f"问题：{q}\n答案:{a}\n---\n")
             added += 1
-        except sqlite3.IntegrityError:
-            existing_hashes.add(h)
-    conn.commit()
-    conn.close()
     return added
 
 
@@ -370,12 +366,7 @@ BATCH3_RIDDLES = [
 
 
 def main():
-    if not os.path.exists(DB_PATH):
-        print(f"数据库不存在: {DB_PATH}")
-        sys.exit(1)
-
-    existing_hashes = get_all_hashes(DB_PATH)
-    current = get_count(DB_PATH, CATEGORY)
+    existing_hashes, current = load_existing()
     print(f"[word_puzzle] 当前 {current} 条，目标 {TARGET} 条")
     need = TARGET - current
     if need <= 0:
@@ -397,11 +388,11 @@ def main():
 
     random.shuffle(unique)
 
-    added = insert_batch(DB_PATH, unique, CATEGORY, existing_hashes)
-    current = get_count(DB_PATH, CATEGORY)
-    print(f"  新增 {added} 条, 总计 {current}/{TARGET}")
+    added = append_entries(unique, existing_hashes)
+    final = current + added
+    print(f"  新增 {added} 条, 总计 {final}/{TARGET}")
 
-    print(f"\n最终: 新增 {added} 条, 总计 {get_count(DB_PATH, CATEGORY)} 条")
+    print(f"\n最终: 新增 {added} 条, 总计 {final} 条")
 
 
 if __name__ == "__main__":

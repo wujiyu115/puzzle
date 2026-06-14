@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-从 cmiyu.com 的多个分类补充爬取脑筋急转弯到 10,000 条。
+从 cmiyu.com 的多个分类补充爬取脑筋急转弯到 10,000 条，写入 origin_data/brain_teaser.txt。
 包括：智力问答、搞笑谜语、趣味谜语中的脑筋急转弯类条目。
 """
 
 import hashlib
 import os
 import re
-import sqlite3
 import sys
 import time
 import random
@@ -19,7 +18,7 @@ sys.stdout.reconfigure(line_buffering=True)
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-DB_PATH = os.path.join(PROJECT_ROOT, "data", "puzzle_data.db")
+OUTPUT_PATH = os.path.join(PROJECT_ROOT, "origin_data", "brain_teaser.txt")
 BASE_URL = "http://www.cmiyu.com"
 TARGET = 10000
 
@@ -39,44 +38,41 @@ def generate_hash(question, answer):
     return hashlib.md5(f"{question}|{answer}".encode()).hexdigest()
 
 
-def get_existing_hashes(db_path):
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute("SELECT content_hash FROM data_entries")
-    hashes = {row[0] for row in cur.fetchall()}
-    conn.close()
-    return hashes
+def sanitize(text):
+    return text.replace("---", "——").replace("--", "——").strip()
 
 
-def get_count(db_path, category):
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM data_entries WHERE category=?", (category,))
-    count = cur.fetchone()[0]
-    conn.close()
-    return count
-
-
-def insert_entries_batch(db_path, entries, category, existing_hashes):
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    added = 0
-    for q, a in entries:
-        h = generate_hash(q, a)
-        if h in existing_hashes:
+def load_existing():
+    hashes = set()
+    count = 0
+    if not os.path.exists(OUTPUT_PATH):
+        return hashes, count
+    with open(OUTPUT_PATH, "r", encoding="utf-8") as f:
+        content = f.read()
+    for chunk in content.split("---"):
+        chunk = chunk.strip()
+        if not chunk:
             continue
-        try:
-            cur.execute(
-                "INSERT INTO data_entries (question, answer, category, content_hash, created_at) "
-                "VALUES (?, ?, ?, ?, datetime('now'))",
-                (q, a, category, h)
-            )
+        lines = chunk.split("\n", 1)
+        q = lines[0].replace("问题：", "").strip() if lines else ""
+        a = lines[1].replace("答案:", "").strip() if len(lines) > 1 else ""
+        if q and a:
+            hashes.add(generate_hash(q, a))
+            count += 1
+    return hashes, count
+
+
+def append_entries_batch(entries, existing_hashes):
+    added = 0
+    with open(OUTPUT_PATH, "a", encoding="utf-8") as f:
+        for q, a in entries:
+            q, a = sanitize(q), sanitize(a)
+            h = generate_hash(q, a)
+            if h in existing_hashes:
+                continue
             existing_hashes.add(h)
+            f.write(f"问题：{q}\n答案:{a}\n---\n")
             added += 1
-        except sqlite3.IntegrityError:
-            existing_hashes.add(h)
-    conn.commit()
-    conn.close()
     return added
 
 
@@ -181,26 +177,24 @@ def crawl_listing_page(url):
     return results
 
 
-def crawl_section_for_brain_teasers(section_path, section_name, existing_hashes, filter_style=False):
-    current = get_count(DB_PATH, "brain_teaser")
-    if current >= TARGET:
-        print(f"[{section_name}] 已达标 {current} 条，跳过")
-        return
+def crawl_section_for_brain_teasers(section_path, section_name, existing_hashes, current_count, filter_style=False):
+    if current_count >= TARGET:
+        print(f"[{section_name}] 已达标 {current_count} 条，跳过")
+        return current_count
 
     print(f"\n[{section_name}] 开始爬取 ({section_path})")
     prefix, max_page = detect_pagination(section_path)
     if not prefix:
         print(f"  无法检测分页，跳过")
-        return
+        return current_count
     print(f"  分页前缀: {prefix}, 最大页数: {max_page}")
 
     total_added = 0
     consecutive_empty = 0
 
     for page_num in range(1, max_page + 1):
-        current = get_count(DB_PATH, "brain_teaser")
-        if current >= TARGET:
-            print(f"  [DONE] 已达到 {current} 条!")
+        if current_count >= TARGET:
+            print(f"  [DONE] 已达到 {current_count} 条!")
             break
 
         if page_num == 1:
@@ -239,20 +233,20 @@ def crawl_section_for_brain_teasers(section_path, section_name, existing_hashes,
             time.sleep(random.uniform(0.1, 0.3))
 
         if page_entries:
-            added = insert_entries_batch(DB_PATH, page_entries, "brain_teaser", existing_hashes)
+            added = append_entries_batch(page_entries, existing_hashes)
             total_added += added
-            current = get_count(DB_PATH, "brain_teaser")
-            print(f"  第 {page_num} 页: 获取 {len(page_entries)} 条, 新增 {added} 条, 总计 {current}/{TARGET}")
+            current_count += added
+            print(f"  第 {page_num} 页: 获取 {len(page_entries)} 条, 新增 {added} 条, 总计 {current_count}/{TARGET}")
 
         time.sleep(random.uniform(0.3, 0.8))
 
-    print(f"[{section_name}] 新增 {total_added} 条, 当前 {get_count(DB_PATH, 'brain_teaser')} 条")
+    print(f"[{section_name}] 新增 {total_added} 条, 当前 {current_count} 条")
+    return current_count
 
 
 def main():
-    print(f"当前脑筋急转弯: {get_count(DB_PATH, 'brain_teaser')} 条, 目标: {TARGET} 条")
-
-    existing_hashes = get_existing_hashes(DB_PATH)
+    existing_hashes, current_count = load_existing()
+    print(f"当前脑筋急转弯: {current_count} 条, 目标: {TARGET} 条")
     print(f"已有 {len(existing_hashes)} 条去重哈希")
 
     sections = [
@@ -263,14 +257,12 @@ def main():
     ]
 
     for path, name, filter_style in sections:
-        current = get_count(DB_PATH, "brain_teaser")
-        if current >= TARGET:
+        if current_count >= TARGET:
             break
-        crawl_section_for_brain_teasers(path, name, existing_hashes, filter_style)
+        current_count = crawl_section_for_brain_teasers(path, name, existing_hashes, current_count, filter_style)
 
     print(f"\n=== 最终统计 ===")
-    print(f"脑筋急转弯: {get_count(DB_PATH, 'brain_teaser')} 条")
-    print(f"谜语: {get_count(DB_PATH, 'riddle')} 条")
+    print(f"脑筋急转弯: {current_count} 条")
 
 
 if __name__ == "__main__":

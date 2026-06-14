@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-爬虫脚本：从 cmiyu.com 爬取脑筋急转弯和谜语，直接写入 SQLite 数据库。
+爬虫脚本：从 cmiyu.com 爬取脑筋急转弯和谜语，写入 origin_data/ 的 txt 文件。
 目标：每个分类达到 10,000 条。
 """
 
 import hashlib
 import os
 import re
-import sqlite3
 import sys
 import time
 import random
@@ -19,8 +18,6 @@ sys.stdout.reconfigure(line_buffering=True)
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-DB_PATH = os.path.join(PROJECT_ROOT, "data", "puzzle_data.db")
-PROGRESS_FILE = os.path.join(SCRIPT_DIR, "crawler_progress.json")
 
 BASE_URL = "http://www.cmiyu.com"
 TARGET = 10000
@@ -34,50 +31,52 @@ HEADERS = {
 }
 
 
+def get_output_path(category):
+    return os.path.join(PROJECT_ROOT, "origin_data", f"{category}.txt")
+
 
 def generate_hash(question, answer):
     combined = f"{question}|{answer}"
     return hashlib.md5(combined.encode()).hexdigest()
 
 
-def get_existing_hashes(db_path, category):
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute("SELECT content_hash FROM data_entries WHERE category=?", (category,))
-    hashes = {row[0] for row in cur.fetchall()}
-    conn.close()
-    return hashes
+def sanitize(text):
+    return text.replace("---", "——").replace("--", "——").strip()
 
 
-def get_count(db_path, category):
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM data_entries WHERE category=?", (category,))
-    count = cur.fetchone()[0]
-    conn.close()
-    return count
-
-
-def insert_entries_batch(db_path, entries, category, existing_hashes):
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    added = 0
-    for q, a in entries:
-        h = generate_hash(q, a)
-        if h in existing_hashes:
+def load_existing(category):
+    filepath = get_output_path(category)
+    hashes = set()
+    count = 0
+    if not os.path.exists(filepath):
+        return hashes, count
+    with open(filepath, "r", encoding="utf-8") as f:
+        content = f.read()
+    for chunk in content.split("---"):
+        chunk = chunk.strip()
+        if not chunk:
             continue
-        try:
-            cur.execute(
-                "INSERT INTO data_entries (question, answer, category, content_hash, created_at) "
-                "VALUES (?, ?, ?, ?, datetime('now'))",
-                (q, a, category, h)
-            )
+        lines = chunk.split("\n", 1)
+        q = lines[0].replace("问题：", "").strip() if lines else ""
+        a = lines[1].replace("答案:", "").strip() if len(lines) > 1 else ""
+        if q and a:
+            hashes.add(generate_hash(q, a))
+            count += 1
+    return hashes, count
+
+
+def append_entries_batch(entries, category, existing_hashes):
+    filepath = get_output_path(category)
+    added = 0
+    with open(filepath, "a", encoding="utf-8") as f:
+        for q, a in entries:
+            q, a = sanitize(q), sanitize(a)
+            h = generate_hash(q, a)
+            if h in existing_hashes:
+                continue
             existing_hashes.add(h)
+            f.write(f"问题：{q}\n答案:{a}\n---\n")
             added += 1
-        except sqlite3.IntegrityError:
-            existing_hashes.add(h)
-    conn.commit()
-    conn.close()
     return added
 
 
@@ -176,11 +175,10 @@ def crawl_listing_page(url):
     return results
 
 
-def crawl_section(section_path, category, db_path, existing_hashes):
-    current_count = get_count(db_path, category)
+def crawl_section(section_path, category, existing_hashes, current_count):
     if current_count >= TARGET:
         print(f"[{category}] 已达到 {current_count} 条，跳过")
-        return
+        return current_count
 
     print(f"\n[{category}] 当前 {current_count} 条，目标 {TARGET} 条")
     print(f"  检测分页模式: {section_path}")
@@ -196,7 +194,6 @@ def crawl_section(section_path, category, db_path, existing_hashes):
     consecutive_empty = 0
 
     for page_num in range(1, max_page + 1):
-        current_count = get_count(db_path, category)
         if current_count >= TARGET:
             print(f"  [DONE] 已达到 {current_count} 条!")
             break
@@ -234,38 +231,34 @@ def crawl_section(section_path, category, db_path, existing_hashes):
             time.sleep(random.uniform(0.1, 0.3))
 
         if page_entries:
-            added = insert_entries_batch(db_path, page_entries, category, existing_hashes)
+            added = append_entries_batch(page_entries, category, existing_hashes)
             total_added += added
-            current_count = get_count(db_path, category)
+            current_count += added
             print(f"  第 {page_num} 页: 获取 {len(page_entries)} 条, 新增 {added} 条, 总计 {current_count}/{TARGET}")
         else:
             print(f"  第 {page_num} 页: 无新数据")
 
         time.sleep(random.uniform(0.3, 0.8))
 
-    print(f"[{category}] 本次新增 {total_added} 条, 当前总计 {get_count(db_path, category)} 条")
+    print(f"[{category}] 本次新增 {total_added} 条, 当前总计 {current_count} 条")
+    return current_count
 
 
 def main():
-    if not os.path.exists(DB_PATH):
-        print(f"数据库不存在: {DB_PATH}")
-        sys.exit(1)
-
     # 爬取脑筋急转弯
-    bt_count = get_count(DB_PATH, "brain_teaser")
+    bt_hashes, bt_count = load_existing("brain_teaser")
     if bt_count < TARGET:
-        bt_hashes = get_existing_hashes(DB_PATH, "brain_teaser")
         # 也加载谜语的hash避免跨类别重复
-        all_hashes = bt_hashes | get_existing_hashes(DB_PATH, "riddle")
-        crawl_section("/njmy/", "brain_teaser", DB_PATH, all_hashes)
+        r_hashes, _ = load_existing("riddle")
+        all_hashes = bt_hashes | r_hashes
+        bt_count = crawl_section("/njmy/", "brain_teaser", all_hashes, bt_count)
     else:
         print(f"[brain_teaser] 已有 {bt_count} 条，已达标")
 
     # 爬取谜语
-    r_count = get_count(DB_PATH, "riddle")
+    r_hashes, r_count = load_existing("riddle")
     if r_count < TARGET:
-        r_hashes = get_existing_hashes(DB_PATH, "riddle")
-        all_hashes = r_hashes | get_existing_hashes(DB_PATH, "brain_teaser")
+        all_hashes = r_hashes | bt_hashes
         riddle_sections = [
             "/etmy/",   # 儿童谜语
             "/dwmy/",   # 动物谜语
@@ -279,18 +272,17 @@ def main():
             "/qita/",   # 趣味谜语
         ]
         for section in riddle_sections:
-            r_count = get_count(DB_PATH, "riddle")
             if r_count >= TARGET:
                 print(f"[riddle] 已达到 {r_count} 条!")
                 break
-            crawl_section(section, "riddle", DB_PATH, all_hashes)
+            r_count = crawl_section(section, "riddle", all_hashes, r_count)
     else:
         print(f"[riddle] 已有 {r_count} 条，已达标")
 
     # 最终统计
     print("\n=== 最终统计 ===")
-    print(f"脑筋急转弯: {get_count(DB_PATH, 'brain_teaser')} 条")
-    print(f"谜语: {get_count(DB_PATH, 'riddle')} 条")
+    print(f"脑筋急转弯: {bt_count} 条")
+    print(f"谜语: {r_count} 条")
 
 
 if __name__ == "__main__":
