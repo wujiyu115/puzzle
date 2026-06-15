@@ -14,6 +14,6 @@ ENV FLASK_ENV=production
 
 RUN mkdir -p /app/data /app/logs
 
-EXPOSE 5000
+EXPOSE 5001
 
 CMD ["sh", "-c", "python init_db.py && python run.py"]
