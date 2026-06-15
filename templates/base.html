@@ -152,11 +152,19 @@
     <header class="bg-white shadow-sm border-b border-gray-200 dark:bg-gray-900 dark:border-gray-800">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
             <a href="/" class="text-xl font-bold">谜题收藏</a>
-            <nav class="space-x-4">
+            <nav class="space-x-4 flex items-center">
+                {% if current_user.is_authenticated %}
                 <a href="/" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">首页</a>
                 <a href="/browse" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">浏览</a>
                 <a href="/add" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">新增</a>
+                {% if current_user.is_admin %}
                 <a href="/api/keys" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">API密钥</a>
+                <a href="/admin/settings" class="text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">设置</a>
+                {% endif %}
+                <span class="text-gray-400">|</span>
+                <span class="text-sm text-gray-500">{{ current_user.username }}</span>
+                <a href="/logout" class="text-red-500 hover:text-red-700 text-sm">退出</a>
+                {% endif %}
             </nav>
         </div>
     </header>

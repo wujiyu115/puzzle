@@ -2,26 +2,26 @@
 主要路由模块
 """
 from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required
 from sqlalchemy import or_
 from app import db
 from app.models import DataEntry
-from app.utils.auth import local_access_only
 from app.utils.logger import get_logger, log_exception
 
-# 获取当前模块的日志记录器
 logger = get_logger()
 
-# 创建蓝图
 main_bp = Blueprint('main', __name__)
 
+
 @main_bp.route('/')
-@local_access_only
+@login_required
 def index():
     """首页"""
     return render_template('index.html')
 
+
 @main_bp.route('/browse')
-@local_access_only
+@login_required
 def browse():
     """浏览数据条目"""
     category = request.args.get('category')
@@ -43,8 +43,9 @@ def browse():
 
     return render_template('browse.html', entries=entries, pagination=pagination, category=category, q=q)
 
+
 @main_bp.route('/add', methods=['GET', 'POST'])
-@local_access_only
+@login_required
 def add_form():
     """批量添加条目表单"""
     if request.method == 'POST':
@@ -52,12 +53,12 @@ def add_form():
 
     return render_template('add.html')
 
+
 def process_batch_entries(request):
     """处理批量添加条目"""
     batch_entries = request.form.get('batch_entries', '').strip()
     category = request.form.get('batch_category', '').lower()
 
-    # 验证输入
     if not batch_entries:
         flash('批量条目不能为空', 'error')
         return redirect(url_for('main.add_form'))
@@ -66,16 +67,13 @@ def process_batch_entries(request):
         flash('无效的类别', 'error')
         return redirect(url_for('main.add_form'))
 
-    # 解析批量条目
     entries = []
 
-    # 根据类别确定分隔符
     if category == 'idiom':
         separator = '含义：'
     else:
         separator = '答案：'
 
-    # 分割多个条目
     items = batch_entries.split('---')
 
     success_count = 0
@@ -87,7 +85,6 @@ def process_batch_entries(request):
         if not item:
             continue
 
-        # 分割问题和答案
         parts = item.split(separator, 1)
 
         if len(parts) < 2:
@@ -101,16 +98,13 @@ def process_batch_entries(request):
             failed_count += 1
             continue
 
-        # 生成哈希用于去重
         content_hash = DataEntry.generate_hash(question, answer)
 
-        # 检查条目是否已存在
         existing_entry = DataEntry.query.filter_by(content_hash=content_hash).first()
         if existing_entry:
             duplicate_count += 1
             continue
 
-        # 创建新条目
         new_entry = DataEntry(
             question=question,
             answer=answer,
@@ -125,7 +119,6 @@ def process_batch_entries(request):
             log_exception(logger, f"Error adding batch entry: {str(e)}")
             failed_count += 1
 
-    # 提交事务
     if success_count > 0:
         try:
             db.session.commit()

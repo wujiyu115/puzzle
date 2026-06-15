@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}站点设置 - 谜题收藏{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6">站点设置</h1>
+
+    <div class="card p-6">
+        <form method="POST" action="{{ url_for('admin.update_settings') }}">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="font-medium">开放注册</h3>
+                    <p class="text-sm text-gray-600">允许新用户自行注册账号</p>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="registration_enabled" value="1"
+                           class="sr-only peer" {% if registration_enabled %}checked{% endif %}>
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer
+                                peer-checked:after:translate-x-full peer-checked:after:border-white
+                                after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                                after:bg-white after:border-gray-300 after:border after:rounded-full
+                                after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                    </div>
+                </label>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-gray-200">
+                <button type="submit" class="btn btn-primary">保存设置</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

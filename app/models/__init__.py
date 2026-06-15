@@ -4,3 +4,5 @@
 from app.models.data_entry import DataEntry
 from app.models.api_key import ApiKey
 from app.models.sync_state import SyncState
+from app.models.user import User
+from app.models.site_config import SiteConfig
