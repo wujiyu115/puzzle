@@ -4,6 +4,7 @@
 """
 import hashlib
 import os
+from clean_data import append_entries as write_entries
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
@@ -14,8 +15,6 @@ def generate_hash(q, a):
     return hashlib.md5(f"{q}|{a}".encode()).hexdigest()
 
 
-def sanitize(text):
-    return text.replace("---", "——").replace("--", "——").strip()
 
 
 def load_existing():
@@ -438,20 +437,7 @@ def main():
     all_entries = generate_all()
     print(f"生成 {len(all_entries)} 条候选数据")
 
-    added = 0
-    with open(OUTPUT_PATH, "a", encoding="utf-8") as f:
-        for q, a in all_entries:
-            q, a = sanitize(q), sanitize(a)
-            if not q or not a:
-                continue
-            h = generate_hash(q, a)
-            if h in existing_hashes:
-                continue
-            existing_hashes.add(h)
-            f.write("---\n")
-            f.write(f"问题：{q}\n答案:{a}\n")
-            added += 1
-
+    added = write_entries(OUTPUT_PATH, all_entries, existing_hashes)
     print(f"新增 {added} 条，总计 {existing_count + added} 条")
 
 

@@ -5,6 +5,8 @@ import json
 import hashlib
 import os
 
+from clean_data import append_entries as write_entries
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 JSON_PATH = os.path.join(SCRIPT_DIR, "idiom_data.json")
@@ -54,24 +56,16 @@ def main():
             continue
         if len(word) < 2:
             continue
-        explanation = explanation.replace("---", "——").replace("--", "——")
         h = generate_hash(word, explanation)
         if h in existing_hashes:
             continue
-        existing_hashes.add(h)
         entries.append((word, explanation))
         if len(entries) >= needed:
             break
 
-    with open(OUTPUT_PATH, "a", encoding="utf-8") as f:
-        if existing_content and not existing_content.endswith("\n"):
-            f.write("\n")
-        for i, (q, a) in enumerate(entries):
-            if i > 0 or existing_content.strip():
-                f.write("---\n")
-            f.write(f"问题：{q}\n答案:{a}\n")
+    added = write_entries(OUTPUT_PATH, entries, existing_hashes)
 
-    print(f"新增 {len(entries)} 条成语，总计约 {len(existing_hashes)} 条")
+    print(f"新增 {added} 条成语，总计约 {len(existing_hashes)} 条")
 
 
 if __name__ == "__main__":

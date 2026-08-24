@@ -8,6 +8,8 @@ import json
 import hashlib
 import os
 
+from clean_data import append_entries as write_entries
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 OUTPUT_PATH = os.path.join(PROJECT_DIR, "origin_data", "joke.txt")
@@ -18,10 +20,6 @@ TARGET_COUNT = 10000
 
 def generate_hash(q, a):
     return hashlib.md5(f"{q}|{a}".encode()).hexdigest()
-
-
-def sanitize(text):
-    return text.replace("---", "——").replace("--", "——").strip()
 
 
 def load_existing():
@@ -52,16 +50,9 @@ def main():
 
     with open(JOKE_JSON, "r", encoding="utf-8") as f:
         jokes = json.load(f)
-    for q, a in jokes:
-        q, a = sanitize(q), sanitize(a)
-        if not q or not a:
-            continue
-        h = generate_hash(q, a)
-        if h not in existing_hashes:
-            existing_hashes.add(h)
-            entries.append((q, a))
+    entries.extend(jokes)
 
-    print(f"原创笑话：{len(entries)} 条新增")
+    print(f"原创笑话：{len(entries)} 条候选")
 
     with open(XIEHOUYU_JSON, "r", encoding="utf-8") as f:
         xiehouyu = json.load(f)
@@ -76,24 +67,14 @@ def main():
             continue
         if len(riddle) < 4 or len(answer) < 2:
             continue
-        q = sanitize(riddle)
-        a = sanitize(answer)
-        h = generate_hash(q, a)
-        if h not in existing_hashes:
-            existing_hashes.add(h)
-            entries.append((q, a))
-            xhy_added += 1
+        entries.append((riddle, answer))
+        xhy_added += 1
 
-    print(f"歇后语补充：{xhy_added} 条新增")
+    print(f"歇后语补充：{xhy_added} 条候选")
 
-    with open(OUTPUT_PATH, "a", encoding="utf-8") as f:
-        for i, (q, a) in enumerate(entries):
-            if existing_count > 0 or i > 0:
-                f.write("---\n")
-            f.write(f"问题：{q}\n答案:{a}\n")
+    added = write_entries(OUTPUT_PATH, entries, existing_hashes)
 
-    total = existing_count + len(entries)
-    print(f"总计 {total} 条笑话")
+    print(f"新增 {added} 条，总计 {existing_count + added} 条笑话")
 
 
 if __name__ == "__main__":

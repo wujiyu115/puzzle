@@ -15,6 +15,8 @@ import random
 import requests
 from bs4 import BeautifulSoup
 
+from clean_data import append_entries as write_entries
+
 # 配置
 BASE_URL = "http://www.cmiyu.com"
 ETMY_URL = f"{BASE_URL}/etmy/"
@@ -172,51 +174,20 @@ def extract_riddles_from_page(url, visited_urls):
     return riddles
 
 
-def format_riddle(riddle):
-    """
-    格式化谜语为指定格式
-    """
-    formatted = f"问题：{riddle['question']}\n答案:{riddle['answer']}"
-    
-    # 如果有注释，添加到格式化的谜语中
-    if 'annotation' in riddle and riddle['annotation']:
-        formatted += f"\n注释:{riddle['annotation']}"
-    
-    return formatted
-
-
 def save_riddles_to_file(riddles):
     """
-    将谜语保存到文件
+    将谜语保存到文件（清洗、去重、分隔符都交给 clean_data.append_entries）
     """
-    # 检查文件是否存在，如果不存在则创建
-    if not os.path.exists(OUTPUT_FILE):
-        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-            f.write("")
-    
-    # 读取现有内容，检查是否有结尾的空行
-    with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
-        content = f.read()
-    
-    # 准备写入新内容
-    with open(OUTPUT_FILE, "a", encoding="utf-8") as f:
-        # 如果文件不为空且最后没有空行，先添加分隔符
-        if content and not content.endswith("\n\n"):
-            if content.endswith("\n"):
-                f.write("---\n")
-            else:
-                f.write("\n---\n")
-        
-        # 写入谜语
-        for i, riddle in enumerate(riddles):
-            f.write(format_riddle(riddle))
-            # 如果不是最后一个谜语，添加分隔符
-            if i < len(riddles) - 1:
-                f.write("\n---\n")
-            else:
-                f.write("\n")
-    
-    print(f"成功保存 {len(riddles)} 条谜语到 {OUTPUT_FILE}")
+    pairs = []
+    for riddle in riddles:
+        answer = riddle['answer']
+        # 小贴士作为答案的附加行，clean() 会原样保留
+        if riddle.get('annotation'):
+            answer = f"{answer}\n注释:{riddle['annotation']}"
+        pairs.append((riddle['question'], answer))
+
+    added = write_entries(OUTPUT_FILE, pairs)
+    print(f"成功保存 {added}/{len(riddles)} 条谜语到 {OUTPUT_FILE}")
 
 
 def remove_duplicates(riddles):

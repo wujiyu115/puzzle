@@ -12,6 +12,33 @@ The database (`data/puzzle_data.db`) is derived from txt files via `init_db.py`.
 2. Run `python init_db.py` to load txt data into the database
 3. Never insert data directly into SQLite via raw `sqlite3` or SQLAlchemy in production scripts
 
+### Writing to txt: always go through `clean_data.append_entries`
+
+Every script in `tools/` writes via the single shared entry point:
+
+```python
+from clean_data import append_entries as write_entries
+
+added = write_entries(OUTPUT_PATH, pairs, existing_hashes)   # pairs: [(question, answer), ...]
+```
+
+It runs `clean()` on each pair (drops scrape garbage, repairs truncated answers,
+neutralises `--`/`---`), dedupes by MD5, and always writes the delimiter *after*
+the entry — so a pre-existing file missing its trailing newline can never produce
+`答案:料---`. Do not hand-roll `f.write(f"问题：…")` in new scripts.
+
+`tools/clean_data.py` doubles as a repair tool for data that is already written:
+
+```bash
+python tools/clean_data.py --demo                     # rule self-check
+python tools/clean_data.py --txt [--apply]            # repair origin_data/*.txt
+python tools/clean_data.py --db <path.db> [--apply]   # repair an existing database
+```
+
+Both `--txt` and `--db` share the same `clean()`, so the MD5 hashes stay in sync.
+Without `--apply` they only print a preview — always read the per-entry preview,
+not just the totals, before applying.
+
 ### Txt file format
 
 ```

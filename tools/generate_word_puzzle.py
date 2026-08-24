@@ -9,6 +9,7 @@ import hashlib
 import os
 import sys
 import random
+from clean_data import append_entries as write_entries
 
 sys.stdout.reconfigure(line_buffering=True)
 
@@ -23,9 +24,6 @@ def generate_hash(question, answer):
     return hashlib.md5(f"{question}|{answer}".encode()).hexdigest()
 
 
-def sanitize(text):
-    """替换文本中的 --- 和 -- 为 ——，避免与分隔符冲突。"""
-    return text.replace("---", "——").replace("--", "——").strip()
 
 
 def load_existing():
@@ -51,16 +49,7 @@ def load_existing():
 
 def append_entries(entries, existing_hashes):
     """将新条目追加写入 txt 文件，返回实际新增数量。"""
-    added = 0
-    with open(OUTPUT_PATH, "a", encoding="utf-8") as f:
-        for q, a in entries:
-            q, a = sanitize(q), sanitize(a)
-            h = generate_hash(q, a)
-            if h in existing_hashes:
-                continue
-            existing_hashes.add(h)
-            f.write(f"问题：{q}\n答案:{a}\n---\n")
-            added += 1
+    added = write_entries(OUTPUT_PATH, entries, existing_hashes)
     return added
 
 

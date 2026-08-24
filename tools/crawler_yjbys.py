@@ -12,6 +12,7 @@ import time
 import random
 import requests
 from bs4 import BeautifulSoup
+from clean_data import append_entries as write_entries
 
 sys.stdout.reconfigure(line_buffering=True)
 
@@ -19,6 +20,8 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 OUTPUT_PATH = os.path.join(PROJECT_ROOT, "origin_data", "brain_teaser.txt")
 TARGET = 10000
+# 单个 <p> 超过这个长度就不可能是一条 Q&A，只可能是整页答案被当成一条
+MAX_TEXT = 400
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -34,8 +37,6 @@ def generate_hash(question, answer):
     return hashlib.md5(f"{question}|{answer}".encode()).hexdigest()
 
 
-def sanitize(text):
-    return text.replace("---", "——").replace("--", "——").strip()
 
 
 def load_existing():
@@ -59,16 +60,7 @@ def load_existing():
 
 
 def append_entries_batch(entries, existing_hashes):
-    added = 0
-    with open(OUTPUT_PATH, "a", encoding="utf-8") as f:
-        for q, a in entries:
-            q, a = sanitize(q), sanitize(a)
-            h = generate_hash(q, a)
-            if h in existing_hashes:
-                continue
-            existing_hashes.add(h)
-            f.write(f"问题：{q}\n答案:{a}\n---\n")
-            added += 1
+    added = write_entries(OUTPUT_PATH, entries, existing_hashes)
     return added
 
 
@@ -87,8 +79,16 @@ def extract_qa_from_article(url):
 
     pairs = []
     for p in content.select("p"):
+        # 站点有未闭合的 <p>，html.parser 会把它们嵌套起来，
+        # 外层 <p> 的 get_text() 包含全部内层内容 —— 那不是一条 Q&A，跳过。
+        if p.find("p"):
+            continue
+
         text = p.get_text().strip()
-        if not text or len(text) < 5:
+        if not text or len(text) < 5 or len(text) > MAX_TEXT:
+            continue
+        # html.parser 遇到畸形 <img src="./pic/…" 会把标签吐成正文
+        if "p>" in text or "/pic/" in text:
             continue
 
         # Pattern: "数字、问题？答案：答案"
